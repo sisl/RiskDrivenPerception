@@ -3,7 +3,7 @@ using POMDPs, POMDPGym, Crux, Flux, Colors, Distributions, Plots, BSON
 ## Train state-based controller
 
 # Generate the environment
-env = InvertedPendulumPOMDP(λcost=0.1f0)
+env = InvertedPendulumMDP(λcost=0.1f0)
 
 # Define the networks we will use
 A() = DiscreteNetwork(Chain(Dense(2, 12, relu), Dense(12, 2)), env.actions)

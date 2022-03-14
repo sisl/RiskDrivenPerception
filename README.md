@@ -6,7 +6,7 @@ To run this code you will need to add the following unregistered julia packages
 * https://github.com/ancorso/Crux.jl
 
 ## Pendulum Example
-Our initial toy problem will be the control of an inverted pendulum from images. The file `inverted_pendulum/demo.jl` goes through the basics of training a simple controller and perception system and evaluating the trained agent. 
+Our initial toy problem will be the control of an inverted pendulum from images. The file `inverted_pendulum/training.jl` goes through the basics of training a simple controller and perception system and evaluating the trained agent. 
 
 #### Controller
 The controller was trained using Proximal Policy Optimization on the 2D pendulum state and has the resulting behavior and policy map. The controller is stored in `inverted_pendulum/controllers/`
