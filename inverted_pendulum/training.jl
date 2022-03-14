@@ -28,7 +28,7 @@ savefig("inverted_pendulum/figures/controller_policy.png")
 N = 1000
 y, X = zeros(Float32, 2, N), zeros(Float32, 18, 10, N)
 for i=1:N
-	y[:, i] = [rand(Uniform(-0.4, 0.4)), rand(Uniform(-1, 1))]
+	y[:, i] = [rand(Uniform(-0.4, 0.4)), rand(Uniform(-2, 2))]
 	X[:, :, i] = POMDPGym.simple_render_pendulum(y[:,i])
 end
 
