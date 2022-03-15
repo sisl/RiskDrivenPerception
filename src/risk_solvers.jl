@@ -28,7 +28,6 @@ function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
 
     # Solve with backwards induction value iteration
     for (si, s) in enumerate(𝒮)
-        println("s index: $si, $s")
         for (ai, a) in enumerate(as)
             s′, r = gen(mdp, s, a)
             if isterminal(mdp, s′)
@@ -53,3 +52,37 @@ function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
     Qp, Qw
 end
 
+function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points)
+    as = support(pa)
+    ps = pa.p
+    N = length(cost_points)
+    cost_grid = RectangleGrid(cost_points)
+
+    Uw = [zeros(N) for i = 1:length(𝒮)] # Values
+    Qw = [[zeros(N) for i = 1:length(𝒮)] for a in as] # state-ation values
+
+    # Solve with backwards induction value iteration
+    for (si, s) in enumerate(𝒮)
+        for (ai, a) in enumerate(as)
+            s′, r = gen(mdp, s, a)
+            if isterminal(mdp, s′)
+                ris, rps = interpolants(cost_grid, [r])
+                for (ri, rp) in zip(ris, rps)
+                    Qw[ai][si][ri] = rp
+                end
+            else
+                s′i, s′w = GridInterpolations.interpolants(grid, s2pt(s′))
+                # s′i = s′i[argmax(s′w)]
+                for (i, w) in zip(s′i, s′w)
+                    Qw[ai][si] .+= w .* Uw[i]
+                end
+            end
+        end
+        for ai in 1:length(as)
+            Uw[si] .+= ps[ai] .* Qw[ai][si]
+        end
+    end
+    Qw
+end
+
+function ρ(s, ϵ, grid, )
