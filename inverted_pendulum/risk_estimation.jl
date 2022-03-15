@@ -1,15 +1,19 @@
 using POMDPs, POMDPGym, Crux, Flux, Distributions, Plots, BSON, GridInterpolations
 include("../src/risk_solvers.jl")
 
+s0 = [0.0, 0, 6.0]
 # Load the environmetn and policy
 env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π,
     θ0 = Uniform(s0[2], s0[2] + 1e-6),
     ω0 = Uniform(s0[3], s0[3] + 1e-6))
 policy = BSON.load("inverted_pendulum/controllers/policy.bson")[:policy]
 
+heatmap(θs, ωs, (θ, ω) -> action(policy, [θ, ω])[1], title = "Pendulum Control Policy", xlabel = "θ", ylabel = "ω")
+
+
 # Convert into a cost function
 tmax = 20 * env.dt
-costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) : 0
+costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) + s[3]^2 : 0
 rmdp = RMDP(env, policy, costfn, true, env.dt, tmax, :noise)
 
 # Set the nominal distribution of noise
@@ -68,7 +72,7 @@ rcondition(r) = r
 s0 = rand(initialstate(rmdp))
 si, wi = GridInterpolations.interpolants(grid, s2pt(s0))
 si = si[argmax(wi)]
-
+si
 # histogram(Qp[1][si], weights = Qw[1][si], normalize = true, bins = range(0, 0.25, step = 0.01))
 
 #cost_points = collect(range(0, 0.25, length = 100))
@@ -78,6 +82,24 @@ scatter(cost_points, zeros(length(cost_points)))
 Qw_fixed[1][si]
 p2 = histogram(cost_points, weights = Qw_fixed[1][si], normalize = true, bins = range(0, π, step = 0.1))
 plot(p1, p2)
+
+ϵ_grid = RectangleGrid(noises_1, noises_2)
+ρ2(s, ϵ, α) = ρ(s2pt([0.0, s...]), ϵ, grid, ϵ_grid, Qw_fixed, cost_points, α = α)[1]
+
+heatmap(θs, ωs, (x, y) -> ρ2([x, y], [0, 0], -0.95))
+ρ2([0, 0], [0, 0], 0)
+
+[ρ2([x, y], [0, 0], -0.5) for x in θs, y in ωs]
+
+noises[1]
+s2pt(s0)
+cvar, var = ρ(s2pt(s0), noises[1], grid, ϵ_grid, Qw_fixed, cost_points, α = 0.95)
+
+histogram(cost_points, weights = Qw_fixed[1][si], normalize = true, bins = range(0, π, step = 0.1))
+vline!([var])
+
+cvar
+
 #weights = Qw_fixed[1][si]
 # rm = IWRiskMetrics(Qp[1][si], length(Qw[1][si]) * Qw[1][si], 0.05)
 # vline!([rm.var], label="α=0.05")
@@ -91,14 +113,14 @@ plot(p1, p2)
 
 
 # Plot some of the results
-t = 0.1
-ω = 0
-p = plot(xlabel = "θ", ylabel = "Expected Return", title = "Expected return at t=$t, ω=$ω")
-for i in 1:length(ρ)
-    plot!(θs, (θ) -> interpolate(grid, ρ[i], s2pt([t, θ, 0])), label = "Noise: $(noises[i])")
-end
-p
+# t = 0.1
+# ω = 0
+# p = plot(xlabel = "θ", ylabel = "Expected Return", title = "Expected return at t=$t, ω=$ω")
+# for i in 1:length(ρ)
+#     plot!(θs, (θ) -> interpolate(grid, ρ[i], s2pt([t, θ, 0])), label = "Noise: $(noises[i])")
+# end
+# p
 
-ps = [heatmap(θs, ωs, (θ, ω) -> interpolate(grid, ρ[i], s2pt([t, θ, ω])), title = "Noise: $(noises[i])") for i in 1:length(ρ)]
-plot(ps...,)
+# ps = [heatmap(θs, ωs, (θ, ω) -> interpolate(grid, ρ[i], s2pt([t, θ, ω])), title = "Noise: $(noises[i])") for i in 1:length(ρ)]
+# plot(ps...,)
 

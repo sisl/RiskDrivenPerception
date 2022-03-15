@@ -85,4 +85,38 @@ function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points)
     Qw
 end
 
-function ρ(s, ϵ, grid, )
+function ρ(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α = 0.95)
+    w = zeros(length(cost_points))
+    sis, sws = interpolants(s_grid, s)
+    ϵis, ϵws = interpolants(ϵ_grid, ϵ)
+    for (si, sw) in zip(sis, sws)
+        for (ϵi, ϵw) in zip(ϵis, ϵws)
+            w .+= sw * ϵw .* Qw[ϵi][si]
+        end
+    end
+    if α == 0
+        return w' * cost_points, 0.0
+    else
+        return cvar_categorical(cost_points, w, α = α)
+    end
+end
+
+function cvar_categorical(xs, ws; α = 0.95)
+    perm = α > 0 ? sortperm(xs, rev = true) : sortperm(xs) # descending/ascending order
+    xs = xs[perm]
+    ws = ws[perm]
+    partial_ws = cumsum(ws)
+    idx = α > 0 ? searchsortedlast(partial_ws, 1 - α) : searchsortedlast(partial_ws, -α)
+
+    if idx < 1
+        idx = 1
+    end
+
+    cvar_xs = xs[1:idx]
+    cvar_ws = ws[1:idx]
+    cvar_ws ./= sum(cvar_ws)
+
+    cvar = cvar_ws' * cvar_xs
+
+    return cvar, xs[idx]
+end
