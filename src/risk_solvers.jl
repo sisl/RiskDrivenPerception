@@ -106,9 +106,10 @@ function cvar_categorical(xs, ws; α = 0.95)
     xs = xs[perm]
     ws = ws[perm]
     partial_ws = cumsum(ws)
-    idx = α > 0 ? searchsortedlast(partial_ws, 1 - α) : searchsortedlast(partial_ws, -α)
+    # Should it be searchsortedfirst or last?
+    idx = α > 0 ? findfirst(partial_ws .> 1 - α) : findfirst(partial_ws .> 1 + α)
 
-    if idx < 1
+    if isnothing(idx)
         idx = 1
     end
 
