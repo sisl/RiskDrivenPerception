@@ -3,6 +3,14 @@ include("../src/risk_solvers.jl")
 include("../inverted_pendulum/controllers/rule_based.jl")
 include("problem_setup.jl")
 
+s0 = [0.0, 0, 0.0]
+# Load the environmetn and policy
+env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π,
+    θ0 = Uniform(s0[2], s0[2] + 1e-6),
+    ω0 = Uniform(s0[3], s0[3] + 1e-6))
+nn_policy = BSON.load("inverted_pendulum/controllers/policy.bson")[:policy]
+simple_policy = FunPolicy(f)
+
 rmdp, px, θs, ωs, s_grid, 𝒮, s2pt, cost_points, ϵ1s, ϵ2s, ϵ_grid = rmdp_pendulum_setup(env, simple_policy)
 Qw = solve_cvar_fixed_particle(rmdp, px.distribution, s_grid, 𝒮, s2pt, cost_points);
 
@@ -30,7 +38,9 @@ for (i, (θ, ω, ϵ1, ϵ2)) in enumerate(big_grid)
     X[:, i] .= (θ, ω, ϵ1, ϵ2)
     y[i] = normalized_CVaR(s, [ϵ1, ϵ2], α, normalizer=normalizers[s])
 end
-data = Flux.DataLoader((X,y), batchsize=length(y), shuffle=true) |> gpu
+X = X |> gpu
+y = y |> gpu
+data = Flux.DataLoader((X,y), batchsize=length(y), shuffle=true)
 
 
 # Create the model and optimizer
@@ -47,10 +57,10 @@ throttlecb = Flux.throttle(evalcb, 1)
 Flux.@epochs 100 Flux.train!(loss, θ, data, opt, cb=throttlecb)
 
 
-heatmap(θs, ωs, (x, y) -> model([x, y, 0, 0])[1], clims=(0,π))
+heatmap(θs, ωs, (x, y) -> cpu(model)([x, y, 0, 0])[1], clims=(0,π))
 heatmap(θs, ωs, (x, y) -> normalized_CVaR([x, y], [0, 0], 0.0), clims=(0,π))
 
-heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.2, 0, x, y])[1], clims=(0,π))
+heatmap(ϵ1s, ϵ2s, (x, y) -> cpu(model)([0.2, 0, x, y])[1], clims=(0,π))
 heatmap(ϵ1s, ϵ2s, (x, y) -> normalized_CVaR([0.2, 0], [x, y], 0.0), clims=(0,π))
 
 y
