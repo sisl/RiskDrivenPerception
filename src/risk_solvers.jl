@@ -85,6 +85,19 @@ function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points)
     Qw
 end
 
+function relative_ρ(s, ϵ, s_grid, ϵ_grid, Qw, cost_points, px; α = 0.95)
+    # Get all ρs
+    ρϵs = zeros(length(px.distribution.objs))
+    for (i, ep) in enumerate(px.distribution.objs)
+        ρϵs[i] = ρ(s, ep, s_grid, ϵ_grid, Qw, cost_points, α = α)[1]
+    end
+    normalizer = ρϵs' * px.distribution.p
+
+    ρ_curr = ρ(s, ϵ, s_grid, ϵ_grid, Qw, cost_points, α = α)[1]
+    return ρ_curr / normalizer
+end
+
+
 function ρ(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α = 0.95)
     w = zeros(length(cost_points))
     sis, sws = interpolants(s_grid, s)
