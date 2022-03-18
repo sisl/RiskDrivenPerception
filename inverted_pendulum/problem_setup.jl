@@ -18,10 +18,10 @@ function rmdp_pendulum_setup(env, policy; Nnoise_half=5, noise_dist=Normal(0, 0.
 	px = DistributionPolicy(ObjectCategorical(noises, probs))
 
 	# Define the grid for interpolation
-	θs_half = π .- sqrt.(collect(range(0, stop = π^2, length = Nθ)))
+	θs_half = π .- (collect(range(0, stop = π^(1/0.8), length = Nθ))).^0.8
 	θs = [-θs_half[1:end-1]; reverse(θs_half)]
 	
-	ωs_half = 8 .- sqrt.(collect(range(0, stop = 8^2, length = Nω)))
+	ωs_half = 8 .- (collect(range(0, stop = 8^(1/0.8), length = Nω))).^0.8
 	ωs = [-ωs_half[1:end-1]; reverse(ωs_half)]
 
 	ts = 0:env.dt:tmax
