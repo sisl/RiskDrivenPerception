@@ -6,11 +6,11 @@ include("problem_setup.jl")
 
 s0 = [0.0, 0, 0.0]
 # Load the environmetn and policy
-env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π,
-        θ0 = Uniform(s0[2], s0[2] + 1e-6),
-        ω0 = Uniform(s0[3], s0[3] + 1e-6))
+env = InvertedPendulumMDP(λcost=0.1f0, failure_thresh=π,
+    θ0=Uniform(s0[2], s0[2] + 1e-6),
+    ω0=Uniform(s0[3], s0[3] + 1e-6))
 nn_policy = BSON.load("inverted_pendulum/controllers/policy.bson")[:policy]
-simple_policy = FunPolicy(continuous_rule(0.0, 2., -1))
+simple_policy = FunPolicy(continuous_rule(0.0, 2.0, -1))
 
 
 # k2a = 0:1:10
@@ -59,7 +59,7 @@ for α in [0.0]
     end
     X = X |> gpu
     y = y |> gpu
-    data = Flux.DataLoader((X, y), batchsize = 1024, shuffle = true)
+    data = Flux.DataLoader((X, y), batchsize=1024, shuffle=true)
 
 
     # Create the model and optimizer
@@ -68,8 +68,14 @@ for α in [0.0]
     #     SirenDense(256, 256),
     #     # SirenDense(256, 256),
     #     Dense(256, 1, softplus)) |> gpu
-    model = Chain(Dense(4, 128, relu),
-        Dense(128, 64, relu),
+    # model = Chain(Dense(4, 128, relu),
+    #     Dense(128, 64, relu),
+    #     Dense(64, 1)) |> gpu
+    model = Chain(Dense(4, 256, relu),
+        Dense(256, 256, relu),
+        Dense(256, 256, relu),
+        Dense(256, 256, relu),
+        Dense(256, 64, relu),
         Dense(64, 1)) |> gpu
     θ = Flux.params(model)
     opt = ADAM(1e-3)
@@ -80,16 +86,18 @@ for α in [0.0]
     throttlecb = Flux.throttle(evalcb, 0.1)
 
     # Train
-    Flux.@epochs 10 Flux.train!(loss, θ, data, opt, cb = throttlecb)
+    Flux.@epochs 200 Flux.train!(loss, θ, data, opt, cb=throttlecb)
 
     model = model |> cpu
     BSON.@save "inverted_pendulum/risk_networks/rn_$(α).bson" model
 end
 
-heatmap(θs_small, ωs_small, (x, y) -> model([x, y, 0, 0])[1], clims = (0, π))
-heatmap(θs_small, ωs_small, (x, y) -> CVaR([x, y], [0, 0], 0.6), clims = (0, π))
+model = BSON.load("inverted_pendulum/risk_networks/rn_0.0.bson")[:model]
 
-heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.3, 0, x, y])[1], clims = (0, π))
-heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([0.3, 0], [x, y], 0.0), clims = (0, π))
+heatmap(θs_small, ωs_small, (x, y) -> model([x, y, 0, 0])[1], clims=(0, π))
+heatmap(θs_small, ωs_small, (x, y) -> CVaR([x, y], [0, 0], 0.0), clims=(0, π))
 
+heatmap(ϵ1s, ϵ2s, (x, y) -> model([-1, -5, x, y])[1], clims=(0, π))
+heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([-1, -5], [x, y], 0.0), clims=(0, π))
 
+fake_perception_nn([-1, -5])

@@ -82,7 +82,7 @@ function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points)
             Uw[si] .+= ps[ai] .* Qw[ai][si]
         end
     end
-    Qw
+    Uw, Qw
 end
 
 function ECVaR(s, s_grid, ϵ_grid, Qw, cost_points, px; α)
