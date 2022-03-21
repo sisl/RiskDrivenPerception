@@ -10,7 +10,8 @@ env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π,
         θ0 = Uniform(s0[2], s0[2] + 1e-6),
         ω0 = Uniform(s0[3], s0[3] + 1e-6))
 nn_policy = BSON.load("inverted_pendulum/controllers/policy.bson")[:policy]
-simple_policy = FunPolicy(continuous_rule(0, 2.0, -1))
+simple_policy = FunPolicy(continuous_rule(0.0, 2., -1))
+
 
 # k2a = 0:1:10
 # k3a = -10:1:10
@@ -25,8 +26,8 @@ simple_policy = FunPolicy(continuous_rule(0, 2.0, -1))
 # rmdp, px, θs, ωs, s_grid, 𝒮, s2pt, cost_points, ϵ1s, ϵ2s, ϵ_grid = rmdp_pendulum_setup(env, simple_policy)
 # Qw = solve_cvar_fixed_particle(rmdp, px.distribution, s_grid, 𝒮, s2pt, cost_points);
 
-θs_small = θs[10:40]
-ωs_small = ωs[10:40]
+θs_small = θs
+ωs_small = ωs
 
 ECVaR(s, α) = ECVaR(s2pt([0.0, s...]), s_grid, ϵ_grid, Qw, cost_points, px; α)
 normalized_CVaR(s, ϵ, α; kwargs...) = normalized_CVaR(s2pt([0.0, s...]), ϵ, s_grid, ϵ_grid, Qw, cost_points, px; α, kwargs...)
@@ -36,8 +37,8 @@ CVaR(s, ϵ, α) = CVaR(s2pt([0.0, s...]), ϵ, s_grid, ϵ_grid, Qw, cost_points; 
 # Set the desired α
 for α in [0.0]
 
-    θs_small = θs[10:40]
-    ωs_small = ωs[10:40]
+    θs_small = θs
+    ωs_small = ωs
 
     # Generate training data
     big_grid = RectangleGrid(θs_small, ωs_small, ϵ1s, ϵ2s)
@@ -79,7 +80,7 @@ for α in [0.0]
     throttlecb = Flux.throttle(evalcb, 0.1)
 
     # Train
-    Flux.@epochs 50 Flux.train!(loss, θ, data, opt, cb = throttlecb)
+    Flux.@epochs 10 Flux.train!(loss, θ, data, opt, cb = throttlecb)
 
     model = model |> cpu
     BSON.@save "inverted_pendulum/risk_networks/rn_$(α).bson" model

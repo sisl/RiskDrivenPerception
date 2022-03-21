@@ -3,7 +3,7 @@ include("../inverted_pendulum/controllers/rule_based.jl")
 ## Train state-based controller
 
 # Generate the environment
-env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π)
+# env = InvertedPendulumMDP(λcost = 0.1f0, failure_thresh = π)
 simple_policy = FunPolicy(continuous_rule(0.0, 2.0, -1))
 
 # # Define the networks we will use
@@ -77,7 +77,7 @@ function ρ3loss(model)
         ŷ = model(x)
         ϵ = ŷ .- y   
         ϵ_risk = risk_function([y; ϵ])
-        return 0.1f0Flux.mse(ŷ, y) + mean(ϵ_risk)
+        return 0.1f0*Flux.mse(ŷ, y) + mean(ϵ_risk)
     end
 end
 
@@ -106,7 +106,7 @@ Flux.@epochs 100 Flux.train!(loss(model_reg), Flux.params(model_reg), data, opt,
 
 model = Chain(flatten, Dense(180, 64, relu), Dense(64, 64, relu), Dense(64, 2, tanh), x -> x .* [θmax, ωmax])
 opt = ADAM(1e-3)
-Flux.@epochs 100 Flux.train!(ρ2loss(model), Flux.params(model), data, opt, cb = throttlecb(model))
+Flux.@epochs 100 Flux.train!(ρ3loss(model), Flux.params(model), data, opt, cb = throttlecb(model))
 
 # Show the errors
 ŷ = model(X)

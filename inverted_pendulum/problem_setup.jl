@@ -1,17 +1,18 @@
-function rmdp_pendulum_setup(env, policy; Nnoise_half=5, noise_dist=Normal(0, 0.5), Nt=20, Ncost=100, Nθ=25, Nω=25)
+function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3), ϵω=Uniform(-3, 3), Nt=20, Ncost=50, Nθ=20, Nω=20)
 	# Create RMDP
 	tmax = Nt * env.dt
 	costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) : 0
 	rmdp = RMDP(env, policy, costfn, true, env.dt, tmax, :noise)
 
 	# Set the nominal distribution of noise
-	noises_1_half = 10 .^ (collect(range(log10(.2*std(noise_dist)), stop = log10(2*std(noise_dist)), length = Nnoise_half)))
+	noises_1_half = 10 .^ (collect(range(log10(.2*std(ϵθ)), stop = log10(2*std(ϵθ)), length = Nϵθ)))
 	noises_1 = [reverse(-noises_1_half); 0.0; noises_1_half]
-	probs_1 = [pdf(noise_dist, n) for n in noises_1]
+	probs_1 = [pdf(ϵθ, n) for n in noises_1]
 	probs_1 ./= sum(probs_1)
-	noises_2_half = 10 .^ (collect(range(log10(.2*std(noise_dist)), stop = log10(2*std(noise_dist)), length = Nnoise_half)))
+	
+	noises_2_half = 10 .^ (collect(range(log10(.2*std(ϵω)), stop = log10(2*std(ϵω)), length = Nϵω)))
 	noises_2 = [reverse(-noises_2_half); 0.0; noises_2_half]
-	probs_2 = [pdf(noise_dist, n) for n in noises_2]
+	probs_2 = [pdf(ϵω, n) for n in noises_2]
 	probs_2 ./= sum(probs_2)
 	noises = [[n1, n2] for n1 in noises_1 for n2 in noises_2]
 	probs = [p1 * p2 for p1 in probs_1 for p2 in probs_2]
