@@ -1,4 +1,4 @@
-function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3), ϵω=Uniform(-3, 3), Nt=20, Ncost=50, Nθ=20, Nω=20)
+function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3), ϵω=Normal(0, 1), Nt=20, Ncost=50, Nθ=20, Nω=20)
     # Create RMDP
     tmax = Nt * env.dt
     costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) : 0
