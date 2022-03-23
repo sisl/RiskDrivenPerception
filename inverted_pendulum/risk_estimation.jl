@@ -80,7 +80,7 @@ function riskmin_perception(x; λ=0f0, α=0f0)
 end
 
 α = 0.0f0
-λ = 1f0
+λ = 10f0
 policy = ContinuousNetwork(Chain((x) -> riskmin_perception(x; α, λ), (x) -> [action(simple_policy, x)]), 1)
 
 env = InvertedPendulumMDP(λcost=0.f0, failure_thresh=π/4)

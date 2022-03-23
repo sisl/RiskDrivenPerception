@@ -4,9 +4,9 @@ include("../inverted_pendulum/controllers/rule_based.jl")
 include("problem_setup.jl")
 
 # Load the environmetn and policy
-env = InvertedPendulumMDP(λcost=0.1f0, failure_thresh=π)
+# env = InvertedPendulumMDP(λcost=0.1f0, failure_thresh=π)
 # nn_policy = BSON.load("inverted_pendulum/controllers/policy.bson")[:policy]
-simple_policy = FunPolicy(continuous_rule(0.0, 2.0, -1))
+# simple_policy = FunPolicy(continuous_rule(0.0, 2.0, -1))
 
 # Setup the problem and solve for the risk distribution
 rmdp, px, θs, ωs, s_grid, 𝒮, s2pt, cost_points, ϵ1s, ϵ2s, ϵ_grid = rmdp_pendulum_setup(env, simple_policy)
@@ -19,7 +19,7 @@ CVaR(s, ϵ, α) = CVaR(s2pt([0.0, s...]), ϵ, s_grid, ϵ_grid, Qw, cost_points; 
 
 
 # Set the desired α
-for α in [-0.8, -0.4, 0.0, 0.4, 0.8]
+for α in [0.0] #[-0.8, -0.4, 0.0, 0.4, 0.8]
     # Generate training data
     big_grid = RectangleGrid(θs, ωs, ϵ1s, ϵ2s)
 
@@ -43,11 +43,7 @@ for α in [-0.8, -0.4, 0.0, 0.4, 0.8]
 
 
     # Create the model and optimizer
-    model = Chain(Dense(4, 256, relu),
-        Dense(256, 256, relu),
-        Dense(256, 256, relu),
-        Dense(256, 256, relu),
-        Dense(256, 64, relu),
+    model = Chain(Dense(4, 64, relu),
         Dense(64, 1)) |> gpu
     θ = Flux.params(model)
     opt = ADAM(1e-3)
@@ -58,22 +54,22 @@ for α in [-0.8, -0.4, 0.0, 0.4, 0.8]
     throttlecb = Flux.throttle(evalcb, 1.0)
 
     # Train
-    Flux.@epochs 400 Flux.train!(loss, θ, data, opt, cb=throttlecb)
+    Flux.@epochs 100 Flux.train!(loss, θ, data, opt, cb=throttlecb)
 
     model = model |> cpu
     BSON.@save "inverted_pendulum/risk_networks/rn_$(α).bson" model
 end
 
 # Load and visualize a model
-α = -0.4
+α = 0.0
 model = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model]
 
-heatmap(θs, ωs, (x, y) -> CVaR([x, y], [0, 0], α), clims=(0, π))
-heatmap(θs, ωs, (x, y) -> model([x, y, 0, 0])[1], clims=(0, π))
+heatmap(θs, ωs, (x, y) -> CVaR([x, y], [0, 0], α), clims=(0, π/4))
+heatmap(θs, ωs, (x, y) -> model([x, y, 0, 0])[1], clims=(0, π/4))
 
 
-p1 = heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([0.2, 0], [x, y], α), clims=(0, π), xlabel="ϵ₁", ylabel="ϵ₂", title = "Tabular")
-p2 = heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.2, 0, x, y])[1], clims=(0, π), xlabel="ϵ₁", ylabel="ϵ₂", title = "Neural Network Surrogate")
+p1 = heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([0.2, 0], [x, y], α), clims=(0, π/4), xlabel="ϵ₁", ylabel="ϵ₂", title = "Tabular")
+p2 = heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.2, 0, x, y])[1], clims=(0, π/4), xlabel="ϵ₁", ylabel="ϵ₂", title = "Neural Network Surrogate")
 plot(p1, p2, size = (1200, 400))
 savefig("inverted_pendulum/figures/nn_surrogate.png")
 

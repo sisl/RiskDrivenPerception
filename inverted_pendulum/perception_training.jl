@@ -3,10 +3,9 @@ include("../inverted_pendulum/controllers/rule_based.jl")
 
 ## Define the perception system
 obsfn = (s) -> POMDPGym.simple_render_pendulum(s, dt=0.05, noise=Normal(0, 0.3))
-maximum(obsfn([0.1,0]))
 
 # Range of state variables
-θmax = 1.2
+θmax = π/4
 ωmax = 1.0
 
 # Generate training images
@@ -124,10 +123,10 @@ savefig("inverted_pendulum/results/alpha_lambda_sweeps/returns_heatmap.pdf")
 
 
 α = 0.0
-λ = 1f0
+λ = 10f0
 risk_function = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model]
 name = "$(dir)α=$(α)_λ=$(λ)"
-model = train_perception(risk_loss(risk_function, λrisk=0f0, λmse=λ), name, epochs=2*Nepochs)
+model = train_perception(risk_loss(risk_function, λrisk=λ), name, epochs=10*Nepochs)
 plot_perception_errors(model, name)
 val = eval_perception(model, name, max_steps=max_steps, Neps=Neps)
 
