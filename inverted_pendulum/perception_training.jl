@@ -3,10 +3,11 @@ include("../inverted_pendulum/controllers/rule_based.jl")
 
 ## Define the perception system
 obsfn = (s) -> POMDPGym.simple_render_pendulum(s, dt=0.05, noise=Normal(0, 0.3))
+maximum(obsfn([0.1,0]))
 
 # Range of state variables
-θmax = 1.0
-ωmax = 2.0
+θmax = 1.2
+ωmax = 1.0
 
 # Generate training images
 N = 10000
@@ -17,11 +18,7 @@ for i = 1:N
 end
 data = Flux.DataLoader((X, y), batchsize=1024) |> gpu
 
-# Visualize some fo the training data
-# scatter(y[1, :], y[2, :])
-# ps = [plot(obsfn(y[:, i])[:,:,1], xaxis=false, xticks=false, yticks=false, titlefont=font(pointsize=8), title=@sprintf("θ=%0.2f, ω=%0.2f", y[1, i], y[2, i])) for i = 1:10]
-# plot(ps..., layout=(2, 5))
-# savefig("inverted_pendulum/figures/training_data.png")
+
 
 # Define the loss functions
 mse_loss(model) = (x, y) -> Flux.Losses.mse(model(x), y)
@@ -96,9 +93,9 @@ end
 dir = "inverted_pendulum/results/alpha_lambda_sweeps/"
 
 # Load in the risk network
-max_steps = 500
-Neps = 1000
-Nepochs = 400
+max_steps = 100# 500
+Neps = 10#1000
+Nepochs = 40#400
 
 name = "$(dir)mse"
 mse_model = train_perception(mse_loss, name, epochs=Nepochs)
@@ -122,6 +119,15 @@ end
 
 BSON.@save "inverted_pendulum/results/alpha_lambda_sweeps/returns.bson" returns
 
-heatmap(αs, λs, returns, xlabel="α", ylabel="λ", title="Returns")
+heatmap(αs, λs, (α, λ) -> returns[findfirst(αs .== α), findfirst(λs .== λ)], xlabel="α", ylabel="λ", title="Returns")
 savefig("inverted_pendulum/results/alpha_lambda_sweeps/returns_heatmap.pdf")
+
+
+α = 0.0
+λ = 1f0
+risk_function = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model]
+name = "$(dir)α=$(α)_λ=$(λ)"
+model = train_perception(risk_loss(risk_function, λrisk=0f0, λmse=λ), name, epochs=2*Nepochs)
+plot_perception_errors(model, name)
+val = eval_perception(model, name, max_steps=max_steps, Neps=Neps)
 

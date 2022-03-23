@@ -65,10 +65,15 @@ for α in [-0.8, -0.4, 0.0, 0.4, 0.8]
 end
 
 # Load and visualize a model
-# model = BSON.load("inverted_pendulum/risk_networks/rn_0.0.bson")[:model]
-# 
-# heatmap(θs_small, ωs_small, (x, y) -> model([x, y, 0, 0])[1], clims=(0, π))
-# heatmap(θs_small, ωs_small, (x, y) -> CVaR([x, y], [0, 0], 0.0), clims=(0, π))
-# 
-# heatmap(ϵ1s, ϵ2s, (x, y) -> model([-1, -5, x, y])[1], clims=(0, π))
-# heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([-1, -5], [x, y], 0.0), clims=(0, π))
+α = -0.4
+model = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model]
+
+heatmap(θs, ωs, (x, y) -> CVaR([x, y], [0, 0], α), clims=(0, π))
+heatmap(θs, ωs, (x, y) -> model([x, y, 0, 0])[1], clims=(0, π))
+
+
+p1 = heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([0.2, 0], [x, y], α), clims=(0, π), xlabel="ϵ₁", ylabel="ϵ₂", title = "Tabular")
+p2 = heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.2, 0, x, y])[1], clims=(0, π), xlabel="ϵ₁", ylabel="ϵ₂", title = "Neural Network Surrogate")
+plot(p1, p2, size = (1200, 400))
+savefig("inverted_pendulum/figures/nn_surrogate.png")
+

@@ -1,4 +1,4 @@
-function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3), ϵω=Normal(0, 1), Nt=20, Ncost=50, Nθ=20, Nω=20)
+function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.2), ϵω=Normal(0, 0.5), Nt=20, Ncost=50, Nθ=20, Nω=20)
     # Create RMDP
     tmax = Nt * env.dt
     costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) : 0
@@ -7,23 +7,29 @@ function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3)
     # Set the nominal distribution of noise
     noises_1_half = 10 .^ (collect(range(log10(0.2 * std(ϵθ)), stop=log10(2 * std(ϵθ)), length=Nϵθ)))
     noises_1 = [reverse(-noises_1_half); 0.0; noises_1_half]
-    probs_1 = [pdf(ϵθ, n) for n in noises_1]
-    probs_1 ./= sum(probs_1)
+    # probs_1 = [pdf(ϵθ, n) for n in noises_1]
+    # probs_1 ./= sum(probs_1)
 
     noises_2_half = 10 .^ (collect(range(log10(0.2 * std(ϵω)), stop=log10(2 * std(ϵω)), length=Nϵω)))
     noises_2 = [reverse(-noises_2_half); 0.0; noises_2_half]
     # noises_2 = collect(range(-3, stop=3, length=Nϵω * 2)) # For uniform 
-    probs_2 = [pdf(ϵω, n) for n in noises_2]
-    probs_2 ./= sum(probs_2)
-    noises = [[n1, n2] for n1 in noises_1 for n2 in noises_2]
-    probs = [p1 * p2 for p1 in probs_1 for p2 in probs_2]
+    # probs_2 = [pdf(ϵω, n) for n in noises_2]
+    # probs_2 ./= sum(probs_2)
+    
+    ϵ_grid = RectangleGrid(noises_1, noises_2)
+    noises = [ϵ for ϵ in ϵ_grid]
+    probs  = [pdf(ϵθ, ϵ[1]) * pdf(ϵω, ϵ[2]) for ϵ in ϵ_grid]
+    probs = probs / sum(probs)
+    # probs = [p1 * p2 for p1 in probs_1 for p2 in probs_2]
     px = DistributionPolicy(ObjectCategorical(noises, probs))
 
     # Define the grid for interpolation
-    θs_half = π .- (collect(range(0, stop=π^(1 / 0.8), length=Nθ))) .^ 0.8
+    θmax = π/4
+    θs_half = θmax .- (collect(range(0, stop=θmax^(1 / 0.8), length=Nθ))) .^ 0.8
     θs = [-θs_half[1:end-1]; reverse(θs_half)]
 
-    ωs_half = 8 .- (collect(range(0, stop=8^(1 / 0.8), length=Nω))) .^ 0.8
+    ωmax = 2
+    ωs_half = ωmax .- (collect(range(0, stop=ωmax^(1 / 0.8), length=Nω))) .^ 0.8
     ωs = [-ωs_half[1:end-1]; reverse(ωs_half)]
 
     ts = 0:env.dt:tmax
@@ -34,9 +40,10 @@ function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.3)
     s2pt(s) = [s[2:end]..., tmax - s[1]]
 
     # cost_points = range(0, stop = π, length = 100)
-    cost_points = reverse(π .- (collect(range(0, stop=π^(1 / 0.8), length=Ncost))) .^ 0.8)
+    cmax = π/4
+    cost_points = reverse(cmax .- (collect(range(0, stop=cmax^(1 / 0.8), length=Ncost))) .^ 0.8)
 
-    ϵ_grid = RectangleGrid(noises_1, noises_2)
+    
 
     rmdp, px, θs, ωs, state_grid, 𝒮, s2pt, cost_points, noises_1, noises_2, ϵ_grid
 end
