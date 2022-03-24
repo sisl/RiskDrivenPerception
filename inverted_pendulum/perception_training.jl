@@ -8,6 +8,8 @@ obsfn = (s) -> POMDPGym.simple_render_pendulum(s, dt=0.05, noise=Normal(0, 0.5))
 θmax = π/4
 ωmax = 1.0
 
+scale = [θmax, ωmax] |> gpu
+
 # Generate training images
 N = 10000
 y, X = zeros(Float32, 2, N), zeros(Float32, 18, 10, 2, N)
@@ -15,7 +17,9 @@ for i = 1:N
     y[:, i] = [rand(Uniform(-θmax, θmax)), rand(Uniform(-ωmax, ωmax))]
     X[:, :, :, i] = obsfn(y[:, i])
 end
-data = Flux.DataLoader((X, y), batchsize=1024) |> gpu
+X = X |> gpu
+y = y |> gpu
+data = Flux.DataLoader((X, y), batchsize=1024)
 
 
 
@@ -34,7 +38,7 @@ function risk_loss(riskfn; λrisk::Float32, λmse::Float32=1f0)
 end
 
 function train_perception(loss, name; 
-                          model=Chain(flatten, Dense(360, 64, relu), Dense(64, 64, relu), Dense(64, 2, tanh), x -> x .* [θmax, ωmax]),
+                          model=Chain(flatten, Dense(360, 64, relu), Dense(64, 64, relu), Dense(64, 2, tanh), x -> x .* scale),
                           opt=ADAM(1e-3),
                           epochs=400, 
                           data=data)
@@ -45,11 +49,12 @@ function train_perception(loss, name;
     Flux.@epochs epochs Flux.train!(loss(model), Flux.params(model), data, opt, cb=throttlecb(model, loss))
     
     model = model |> cpu
+    model = Chain(model[1:end-1]..., x -> x .* [θmax, ωmax])
     BSON.@save "$(name)_perception_network.bson" model
     return model
 end
 
-function plot_perception_errors(model, name=nothing; X=X, y=y)
+function plot_perception_errors(model, name=nothing; X=cpu(X), y=cpu(y))
     ŷ = model(X)
     p1 = scatter(y[1, :], ŷ[1, :], label="θ", alpha=0.2, xlabel="θ", ylabel = "Predicted", title = "Perception Model Accuracy (over θ)")
     scatter!(y[1, :], ŷ[2, :], label="ω", alpha=0.2, legend=:topleft)
@@ -106,7 +111,7 @@ eval_perception(mse_model, name, max_steps=max_steps, Neps=Neps)
 returns = zeros(length(αs), length(λs))
 
 for α in αs
-    risk_function = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model]
+    risk_function = BSON.load("inverted_pendulum/risk_networks/rn_$(α).bson")[:model] |> gpu
     for λ in λs
         name = "$(dir)α=$(α)_λ=$(λ)"
         model = train_perception(risk_loss(risk_function, λrisk=λ), name, epochs=Nepochs)
