@@ -70,6 +70,6 @@ end
 # 
 # p1 = heatmap(ϵ1s, ϵ2s, (x, y) -> CVaR([0.2, 0], [x, y], α), clims=(0, π/4), xlabel="ϵ₁", ylabel="ϵ₂", title = "Tabular")
 # p2 = heatmap(ϵ1s, ϵ2s, (x, y) -> model([0.2, 0, x, y])[1], clims=(0, π/4), xlabel="ϵ₁", ylabel="ϵ₂", title = "Neural Network Surrogate")
-# plot(p1, p2, size = (1200, 400))
+# plot(p1, p2, size = (1200, 400), margin=5mm)
 # savefig("inverted_pendulum/figures/nn_surrogate.png")
 
