@@ -52,7 +52,7 @@ function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
     Qp, Qw
 end
 
-function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points; mdp_type=:gen, ngen=1)
+function solve_cvar_fixed_particle(rmdp, pa, grid, 𝒮, s2pt, cost_points; mdp_type=:gen, ngen=1)
     as = support(pa)
     ps = pa.p
     N = length(cost_points)
@@ -63,12 +63,12 @@ function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points; mdp_t
 
     # Solve with backwards induction value iteration
     for (si, s) in enumerate(𝒮)
-        si % 1000 == 0 ? println(si) : nothing
+        # si % 1000 == 0 ? println(si) : nothing
         for (ai, a) in enumerate(as)
             if mdp_type == :gen
-                q_ai_si_gen!(Qw, Uw, mdp, ai, a, si, s, grid, cost_grid; ngen)
+                q_ai_si_gen!(Qw, Uw, rmdp, ai, a, si, s, grid, cost_grid; ngen)
             elseif mdp_type == :exp
-                q_ai_si_exp!(Qw, Uw, mdp, ai, a, si, s, grid, cost_grid)
+                q_ai_si_exp!(Qw, Uw, rmdp, ai, a, si, s, grid, cost_grid)
             else
                 error("Invalid MDP type")
             end
@@ -80,11 +80,11 @@ function solve_cvar_fixed_particle(mdp, pa, grid, 𝒮, s2pt, cost_points; mdp_t
     Uw, Qw
 end
 
-function q_ai_si_exp!(Qw, Uw, mdp, ai, a, si, s, grid, cost_grid)
-    t = transition(mdp, s, a)
+function q_ai_si_exp!(Qw, Uw, rmdp, ai, a, si, s, grid, cost_grid)
+    t = transition(rmdp, s, a)
     for (s′, p) in t
-        if isterminal(mdp, s′)
-            r = reward(mdp, s, a)
+        if isterminal(rmdp, s′)
+            r = reward(rmdp, s, s′)
             ris, rps = interpolants(cost_grid, [r])
             for (ri, rp) in zip(ris, rps)
                 Qw[ai][si][ri] += p * rp
@@ -98,13 +98,13 @@ function q_ai_si_exp!(Qw, Uw, mdp, ai, a, si, s, grid, cost_grid)
     end
 end
 
-function q_ai_si_gen!(Qw, Uw, mdp, ai, a, si, s, grid, cost_grid; ngen)
+function q_ai_si_gen!(Qw, Uw, rmdp, ai, a, si, s, grid, cost_grid; ngen)
     for i = 1:ngen
-        s′, r = gen(mdp, s, a)
-        if isterminal(mdp, s′)
+        s′, r = gen(rmdp, s, a)
+        if isterminal(rmdp, s′)
             ris, rps = interpolants(cost_grid, [r])
             for (ri, rp) in zip(ris, rps)
-                Qw[ai][si][ri] = (1 / ngen) * rp
+                Qw[ai][si][ri] += (1 / ngen) * rp
             end
         else
             s′i, s′w = GridInterpolations.interpolants(grid, s2pt(s′))
