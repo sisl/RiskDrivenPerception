@@ -17,7 +17,7 @@ dhs = range(-10, 10, length=21)
 policy = OptimalCollisionAvoidancePolicy(env, hs, dhs, τs)
 
 # Plot a slice of the policy
-heatmap(τs, hs, (τ, h) -> action(policy, [h, 0.0, 0.0, τ]))
+heatmap(τs, hs, (τ, h) -> action(policy, [h, 0.0, 0.0, τ]), xlabel="τ (s)", ylabel="h (m)", title="CAS Policy")
 
 # Set up the cost function and risk mdp
 # costfn(m, s, sp) = isterminal(m, sp) && (-50.0 < s[1] < 50.0) ? 1.0 : 0.0
@@ -43,7 +43,7 @@ N = 1000
 D = episodes!(Sampler(rmdp, px), Neps=N)
 samples = D[:r][1, D[:done][:]]
 
-p1 = histogram(samples, title="CAS Costs", bins=range(0, 900, 50), normalize=true, alpha=0.3)
+p1 = histogram(samples, title="CAS Costs", bins=range(0, 900, 50), normalize=true, alpha=0.3, xlabel="cost", label="MC")
 
 # Set up cost points, state grid, and other necessary data
 cost_points = collect(range(0, 900, 50))
@@ -59,7 +59,7 @@ s2pt(s) = s
 si, wi = GridInterpolations.interpolants(s_grid, s2pt(s0))
 si = si[argmax(wi)]
 
-p2 = histogram!(cost_points, weights=Uw[si], bins=range(0, 900, 50), normalize=true, alpha=0.4)
+p2 = histogram!(cost_points, weights=Uw[si], bins=range(0, 900, 50), normalize=true, alpha=0.4, label="DP")
 
 # Create CVaR convenience functions
 CVaR(s, ϵ, α) = CVaR(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α)
@@ -73,7 +73,7 @@ end
 Plots.gif(anim, "collision_avoidance/figures/CVaR.gif", fps=6)
 
 # Heatmap over noise
-heatmap(noises_τ, noises_h, (x, y) -> CVaR([0.0, 0.0, 0.0, 30.0], [y, x], 0.0), xlabel="ϵτ", ylabel="ϵh")
+heatmap(noises_τ, noises_h, (x, y) -> CVaR([0.0, 0.0, 0.0, 30.0], [y, x], 0.0), xlabel="ϵτ", ylabel="ϵh", title="CVaR")
 
 # Most important states
 riskmin(x; α) = minimum([CVaR(x, [ϵh, ϵτ], α) for ϵh in noises_h for ϵτ in noises_τ])
