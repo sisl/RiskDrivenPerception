@@ -27,3 +27,5 @@ docs/site/
 Manifest.toml
 
 log/
+
+collision_avoidance/data/
