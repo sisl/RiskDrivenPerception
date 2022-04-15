@@ -29,3 +29,8 @@ Manifest.toml
 log/
 
 collision_avoidance/data/
+collision_avoidance/test_data/
+collision_avoidance/data_generation/test_data_gen.py
+
+*.ipynb_checkpoints*
+*pycache*
