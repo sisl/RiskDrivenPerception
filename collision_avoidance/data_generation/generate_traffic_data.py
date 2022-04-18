@@ -31,7 +31,7 @@ def sample_random_state():
     hang = np.random.uniform(-36.0, 36.0)  # degrees
     r = np.random.gamma(2, 200)  # meters
     while r < 20.0:
-        r = np.random.exponential(200.0)  # meters
+        r = np.random.gamma(2, 200)  # meters
 
     # Intruder state
     e1 = e0 + np.sin((h0 + hang) * (np.pi / 180)) * r
