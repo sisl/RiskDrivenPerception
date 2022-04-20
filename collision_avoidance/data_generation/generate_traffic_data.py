@@ -90,7 +90,7 @@ def gen_data(client, npoints, outdir):
 
 
         # Write the screenshot to a file
-        cv2.imwrite('%s%d.jpg' % (outdir, i), ss)
+        cv2.imwrite('%simgs/%d.jpg' % (outdir, i), ss)
         
         # Write to csv file
         with open(csv_file, 'a') as fd:
@@ -103,10 +103,11 @@ client = XPlaneConnect()
 client.pauseSim(True)
 client.sendDREF("sim/operation/override/override_joystick", 1)
 set_position(client, 1, 0, 1200, 10, 90, roll=0, pitch=0)
+set_position(client, 0, 0, 1200, 10, 90, roll=0, pitch=0)
 
-outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/traffic_data/" # make sure this exists
+outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/test_final_data/" # make sure this exists
 
-npoints = 10000
+npoints = 50
 
 time.sleep(3)
 
