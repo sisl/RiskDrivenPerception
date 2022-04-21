@@ -10,7 +10,7 @@ def sind(x):
 def tand(x):
     return np.tan(x * np.pi / 180)
 
-def get_bounding_box(e0, n0, u0, h0, e1, n1, u1, hfov=80, vfov=50.75, offset=0, tilt=-0.70, sw=1920, sh=1080, aw0=0, daw=17000):
+def get_bounding_box(e0, n0, u0, h0, e1, n1, u1, hfov=80, vfov=50.5, offset=0, tilt=-0.70, sw=1920, sh=1080, aw0=0, daw=17000):
     # Make ownship be the origin
     x = n1 - n0
     y = -(e1 - e0)  # right-handed coordinates
@@ -82,5 +82,5 @@ def gen_labels_yolo(outdir):
         fd.write("aircraft")
 
 
-outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/traffic_data/"
+outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/traffic_data/"
 gen_labels_yolo(outdir)
