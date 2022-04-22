@@ -10,7 +10,7 @@ def sind(x):
 def tand(x):
     return np.tan(x * np.pi / 180)
 
-def get_bounding_box(e0, n0, u0, h0, e1, n1, u1, hfov=80, vfov=50.5, offset=0, tilt=-0.70, sw=1920, sh=1080, aw0=0, daw=17000):
+def get_bounding_box(e0, n0, u0, h0, e1, n1, u1, hfov=80, vfov=49.5, offset=0, tilt=-1.20, sw=1920, sh=1056, aw0=0, daw=17000):
     # Make ownship be the origin
     x = n1 - n0
     y = -(e1 - e0)  # right-handed coordinates
@@ -75,7 +75,7 @@ def gen_labels_yolo(outdir):
         file_name = outdir + "imgs/" + str(i) + ".txt"
         with open(file_name, 'w') as fd:
             fd.write("0 %f %f %f %f\n" %
-                     (xp / 1920, yp / 1080, w / 1920, h / 1080))
+                     (xp  / 1920, yp / 1056, w / 1920, h / 1080))
     
     label_name = file_name = outdir + "imgs/darket.labels"
     with open(label_name, 'w') as fd:
