@@ -15,9 +15,23 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import matplotlib.patches as patches
 import imageio
 
+screen_shot = mss.mss()
+
 ####################################################
 # X-Plane 11 functions
 ####################################################
+
+# client=XPlaneConnect()
+# model = load_model("models/traffic_detector_v2.pt")
+# save_img_w_bb(model, get_screenshot(), "out.jpg")
+
+def get_bounding_box(client, model, e0, n0, u0, psi0, e1, n1, u1, psi1, save):
+    client.sendDREF("sim/time/zulu_time_sec", 9.0*3600 + 8*3600)
+    set_position(client, 0, e0, n0, u0, -psi0, 0, 0)
+    set_position(client, 1, e1, n1, u1, -psi1, 0, 0)
+    # time.sleep(0.1)
+    return save_img_w_bb(model, get_screenshot(), save)
+    
 
 def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
     ref = [37.46358871459961, -122.11750030517578, 1578.909423828125]
@@ -25,9 +39,11 @@ def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
     client.sendPOSI([*p, pitch, roll, psi], ac)
 
 
-def get_screenshot(screen_shot):
-    ss = cv2.cvtColor(np.array(screen_shot.grab(
-        screen_shot.monitors[0])), cv2.COLOR_BGRA2BGR)[12:-12, :, ::-1]
+def get_screenshot(screen_shot=screen_shot):
+    
+    # monitor = screen_shot.monitors[1]
+    monitor = screen_shot.monitors[1] = {'left':1920, 'top':0, 'width':1920, 'height':1080}
+    ss = cv2.cvtColor(np.array(screen_shot.grab(monitor)), cv2.COLOR_BGRA2BGR)[12:-12, :, ::-1]
 
     # Deal with screen tearing
     ss_sum = np.reshape(np.sum(ss, axis=-1), -1)
@@ -35,7 +51,7 @@ def get_screenshot(screen_shot):
     while np.min(ss_sum) == 0 and ind < 10:
         # print("Screen tearing detected. Trying again...")
         ss = cv2.cvtColor(np.array(screen_shot.grab(
-            screen_shot.monitors[0])), cv2.COLOR_BGRA2BGR)[12:-12, :, ::-1]
+            monitor)), cv2.COLOR_BGRA2BGR)[12:-12, :, ::-1]
         ss_sum = np.reshape(np.sum(ss, axis=-1), -1)
         ind += 1
 
@@ -108,6 +124,9 @@ def load_model(ckpt_file):
             m.forward = m.forward_fuse  # update forward
 
     model = AutoShape(model)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
 
     return model
 
@@ -145,41 +164,58 @@ def show_img_w_bb(model, im):
     plt.axis('off')
 
 
-def save_img_w_bb(model, im, filename):
-    f, ax = plt.subplots()
-    f.set_figwidth(14)
-    f.set_figheight(14)
-
-    ax.imshow(im)
-
+def save_img_w_bb(model, im, save):
+    
     df = model(im).pandas().xyxy[0]
+    
+    if save > -1:
+        f, ax = plt.subplots()
+        f.set_figwidth(14)
+        f.set_figheight(14)
 
-    if not df.empty:
-        xmin = np.rint(df['xmin'][0])
-        xmax = np.rint(df['xmax'][0])
-        ymin = np.rint(df['ymin'][0])
-        ymax = np.rint(df['ymax'][0])
+        ax.imshow(im)
+        
+        if not df.empty:
+            xmin = np.rint(df['xmin'][0])
+            xmax = np.rint(df['xmax'][0])
+            ymin = np.rint(df['ymin'][0])
+            ymax = np.rint(df['ymax'][0])
 
-        xp = xmin
-        yp = ymin
-        w = xmax - xmin
-        h = ymax - ymin
+            xp = xmin
+            yp = ymin
+            w = xmax - xmin
+            h = ymax - ymin
 
-        conf = np.round(df['confidence'][0], decimals=2)
+            conf = np.round(df['confidence'][0], decimals=2)
 
-        rect = patches.Rectangle((xp, yp),
-                                 w, h, linewidth=1, edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-        ax.text(xp + (w / 2), yp - 10, "Conf: " + str(conf), horizontalalignment='center',
-                verticalalignment='center', color='r')
+            rect = patches.Rectangle((xp, yp),
+                                     w, h, linewidth=1, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+            ax.text(xp + (w / 2), yp - 10, "Conf: " + str(conf), horizontalalignment='center',
+                    verticalalignment='center', color='r')
 
-    plt.xlim(0, 1920)
-    plt.ylim(1056, 0)
-    plt.axis('off')
+        plt.xlim(0, 1920)
+        plt.ylim(1056, 0)
+        plt.axis('off')
 
-    plt.savefig(filename, bbox_inches='tight', pad_inches=0)
-    plt.close(f)
+        filename = 'imgs/' + str(save) + '.png'
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+        plt.close(f)
+        
+    return not df.empty
 
+def create_gif(nsteps, dir='imgs/', gifname='out.gif'):
+    frames = []
+    for i in range(1, nsteps+1):
+        filename = dir + str(i) + '.png'
+        frames.append(imageio.imread(filename))
+        
+    imageio.mimsave(gifname, frames, 'GIF', fps=5)
+    
+    # Remove files
+    for i in range(1, nsteps+1):
+        filename = dir + str(i) + '.png'
+        os.remove(filename)
 
 def create_bounding_gif(imgs, gifname):
     # Create the images
