@@ -30,6 +30,7 @@ log/
 
 collision_avoidance/data_files/
 collision_avoidance/data_generation/test_data_gen.py
+collision_avoidance/test_inference.ipynb
 
 *.ipynb_checkpoints*
 *pycache*
