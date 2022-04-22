@@ -48,9 +48,9 @@ def sample_random_state():
     # Info about relative position of intruder
     vang = np.random.uniform(-25.0, 25.0)  # degrees
     hang = np.random.uniform(-38.0, 38.0)  # degrees
-    z = np.random.gamma(2, 200)  # meters
-    while z < 20.0:
-        z = np.random.gamma(2, 200)  # meters
+    z = np.random.uniform(20, 2000)  # meters
+    # while z < 20.0:
+    #     z = np.random.gamma(2, 200)  # meters
 
     # Intruder state
     e1, n1, u1 = get_intruder_position(e0, n0, u0, h0, z, hang, vang)
@@ -69,11 +69,12 @@ def gen_data(client, npoints, outdir):
         e0, n0, u0, h0, vang, hang, z, e1, n1, u1, h1 = sample_random_state()
 
         # Position the aircraft
+        client.sendDREF("sim/time/zulu_time_sec", 9.0*3600 + 8*3600)
         set_position(client, 0, e0, n0, u0, h0)
         set_position(client, 1, e1, n1, u1, h1)
 
         # Pause and then take the screenshot
-        time.sleep(0.2)
+        time.sleep(0.05)
         ss = np.array(screen_shot.grab(screen_shot.monitors[0]))[12:-12, :, :]
 
         # Deal with screen tearing
@@ -105,9 +106,9 @@ client.sendDREF("sim/operation/override/override_joystick", 1)
 set_position(client, 1, 0, 1200, 10, 90, roll=0, pitch=0)
 set_position(client, 0, 0, 1200, 10, 90, roll=0, pitch=0)
 
-outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/test_final_data/" # make sure this exists
+outdir = "/home/anthonycorso/Desktop/trafficdata/" # make sure this exists
 
-npoints = 50
+npoints = 10000
 
 time.sleep(3)
 
