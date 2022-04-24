@@ -18,8 +18,8 @@ function solve_conditional_bellman(mdp, pa, rcondition, grid, 𝒮, s2pt)
 end
 
 function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
-    as = support(pa)
-    ps = pa.p
+    as = support(pa) # TODO: remove for state-dep disturbance model
+    ps = pa.p # TODO: remove for state-dep disturbance model
     
     Up = [Float64[] for i=1:length(𝒮)] # Values
     Uw = [Float64[] for i=1:length(𝒮)] # Values
@@ -46,7 +46,7 @@ function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
         end
         for ai in 1:length(as)
             push!(Up[si], Qp[ai][si]...)
-            push!(Uw[si], ps[ai] .* Qw[ai][si]...)
+            push!(Uw[si], ps[ai] .* Qw[ai][si]...) # TODO: Replace ps with pa(s) for state-dependent disturbance model
         end
     end
     Qp, Qw
