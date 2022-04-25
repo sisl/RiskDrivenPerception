@@ -106,7 +106,7 @@ client.sendDREF("sim/operation/override/override_joystick", 1)
 set_position(client, 1, 0, 1200, 10, 90, roll=0, pitch=0)
 set_position(client, 0, 0, 1200, 10, 90, roll=0, pitch=0)
 
-outdir = "/home/anthonycorso/Desktop/trafficdata/" # make sure this exists
+outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/traffic_data/" # make sure this exists
 
 npoints = 10000
 
