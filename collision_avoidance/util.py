@@ -30,7 +30,7 @@ def get_bounding_box(client, model, e0, n0, u0, psi0, e1, n1, u1, psi1, save):
     set_position(client, 0, e0, n0, u0, -psi0, 0, 0)
     set_position(client, 1, e1, n1, u1, -psi1, 0, 0)
     # time.sleep(0.1)
-    return save_img_w_bb(model, get_screenshot(), save)
+    return get_bb(model, get_screenshot(), save)
     
 
 def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
@@ -41,8 +41,8 @@ def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
 
 def get_screenshot(screen_shot=screen_shot):
     
-    # monitor = screen_shot.monitors[1]
-    monitor = screen_shot.monitors[1] = {'left':1920, 'top':0, 'width':1920, 'height':1080}
+    monitor = screen_shot.monitors[1]
+    # monitor = screen_shot.monitors[1] = {'left':1920, 'top':0, 'width':1920, 'height':1080}
     ss = cv2.cvtColor(np.array(screen_shot.grab(monitor)), cv2.COLOR_BGRA2BGR)[12:-12, :, ::-1]
 
     # Deal with screen tearing
@@ -204,6 +204,50 @@ def save_img_w_bb(model, im, save):
         
     return not df.empty
 
+
+def get_bb(model, im, save):
+
+    df = model(im).pandas().xyxy[0]
+    if not df.empty:
+        xmin = np.rint(df['xmin'][0])
+        xmax = np.rint(df['xmax'][0])
+        ymin = np.rint(df['ymin'][0])
+        ymax = np.rint(df['ymax'][0])
+
+        xp = xmin
+        yp = ymin
+        w = xmax - xmin
+        h = ymax - ymin
+    else:
+        xp, yp, w, h = 0, 0, 0, 0
+
+    if save > -1:
+        f, ax = plt.subplots()
+        f.set_figwidth(14)
+        f.set_figheight(14)
+
+        ax.imshow(im)
+
+        if not df.empty:
+            conf = np.round(df['confidence'][0], decimals=2)
+
+            rect = patches.Rectangle((xp, yp),
+                                     w, h, linewidth=1, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+            ax.text(xp + (w / 2), yp - 10, "Conf: " + str(conf), horizontalalignment='center',
+                    verticalalignment='center', color='r')
+
+        plt.xlim(0, 1920)
+        plt.ylim(1056, 0)
+        plt.axis('off')
+
+        filename = 'imgs/' + str(save) + '.png'
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+        plt.close(f)
+
+    return not df.empty, xp, yp, w, h
+
+
 def create_gif(nsteps, dir='imgs/', gifname='out.gif'):
     frames = []
     for i in range(1, nsteps+1):
@@ -216,6 +260,7 @@ def create_gif(nsteps, dir='imgs/', gifname='out.gif'):
     for i in range(1, nsteps+1):
         filename = dir + str(i) + '.png'
         os.remove(filename)
+
 
 def create_bounding_gif(imgs, gifname):
     # Create the images
@@ -235,3 +280,23 @@ def create_bounding_gif(imgs, gifname):
     # Remove files
     for filename in set(filenames):
         os.remove(filename)
+
+
+def bb_from_file(model, filename):
+    im = cv2.imread(filename)[:, :, ::-1]
+
+    df = model(im).pandas().xyxy[0]
+    if not df.empty:
+        xmin = np.rint(df['xmin'][0])
+        xmax = np.rint(df['xmax'][0])
+        ymin = np.rint(df['ymin'][0])
+        ymax = np.rint(df['ymax'][0])
+
+        xp = xmin
+        yp = ymin
+        w = xmax - xmin
+        h = ymax - ymin
+    else:
+        xp, yp, w, h = 0, 0, 0, 0
+
+    return not df.empty, xp, yp, w, h
