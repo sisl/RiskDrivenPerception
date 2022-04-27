@@ -34,11 +34,11 @@ si, wi = GridInterpolations.interpolants(s_grid, s2pt(s0))
 si = si[argmax(wi)]
 
 # Solve for distribution over costs
-@time Uw, Qw = solve_cvar_fixed_particle(rmdp, px.distribution, s_grid, 𝒮, s2pt, cost_points);
+@time Uw, Qw = solve_cvar_fixed_particle(rmdp, px, s_grid, 𝒮, s2pt, cost_points);
 
 # Plot distribution at state s0
 # Uw_replace = mean([px.distribution.p[ai] * Qw[ai][si] for ai in 1:length(px.distribution.objs)])
-p2 = histogram!(cost_points, weights=Uw[si], normalize=true, bins=range(0, π/4, step=0.1), alpha=0.4, label="Dynamic Programming")
+p2 = histogram(cost_points, weights=Uw[si], normalize=true, bins=range(0, π/4, step=0.1), alpha=0.4, label="Dynamic Programming")
 # # plot(p1, p2)
 # vline!([1.3], label="VaR")
 

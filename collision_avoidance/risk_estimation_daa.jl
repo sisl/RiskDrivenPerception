@@ -23,15 +23,23 @@ costfn(m, s, sp) = isterminal(m, sp) ? 700 - abs(s[1]) : 0.0
 rmdp = RMDP(env, policy, costfn, false, 1.0, 40.0, :both)
 
 # Start with just detect noise
-detect_prob = 0.9
+p_detect(s) = sigmoid(-0.3232s[4] + 3.2294)
+function get_detect_dist(s)
+    pd = p_detect(s)
+    noises = [[ϵ, 0.0, 0.0, 0.0, 0.0] for ϵ in [0, 1]]
+    return ObjectCategorical(noises, [1 - pd, pd])
+end
+
+#detect_prob = 0.9
 noises_detect = [0, 1]
-probs_detect = [1.0 - detect_prob, detect_prob]
+#probs_detect = [1.0 - detect_prob, detect_prob]
 
 ϵ_grid = RectangleGrid(noises_detect)
 noises = [[ϵ[1], 0.0, 0.0, 0.0, 0.0] for ϵ in ϵ_grid]
-probs = probs_detect # NOTE: will need to change once also have additive noise
+#probs = probs_detect # NOTE: will need to change once also have additive noise
 
-px = DistributionPolicy(ObjectCategorical(noises, probs))
+#px = DistributionPolicy(ObjectCategorical(noises, probs))
+px = StateDependentDistributionPolicy(get_detect_dist, DiscreteSpace(noises))
 
 # Get the distribution of returns and plot
 N = 1000
@@ -47,7 +55,7 @@ s_grid = RectangleGrid(hs, dhs, env.actions, τs)
 s2pt(s) = s
 
 # Solve for distribution over costs
-@time Uw, Qw = solve_cvar_fixed_particle(rmdp, px.distribution, s_grid, 𝒮, s2pt,
+@time Uw, Qw = solve_cvar_fixed_particle(rmdp, px, s_grid, 𝒮, s2pt,
     cost_points, mdp_type=:exp);
 
 # Grab the initial state
@@ -65,7 +73,7 @@ heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], 0), title="α = 0")
 anim = @animate for α in range(-1.0, 1.0, length=51)
     heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], α), title="CVaR (α = $α)", clims=(200, 700), xlabel="τ (s)", ylabel="h (m)")
 end
-Plots.gif(anim, "collision_avoidance/figures/daa_CVaR.gif", fps=6)
+Plots.gif(anim, "collision_avoidance/figures/daa_CVaR_v2.gif", fps=6)
 
 # Most important states
 riskmin(x; α) = minimum([CVaR(x, [noise], α) for noise in noises_detect])

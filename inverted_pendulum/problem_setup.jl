@@ -21,7 +21,9 @@ function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.2)
     probs  = [pdf(ϵθ, ϵ[1]) * pdf(ϵω, ϵ[2]) for ϵ in ϵ_grid]
     probs = probs / sum(probs)
     # probs = [p1 * p2 for p1 in probs_1 for p2 in probs_2]
-    px = DistributionPolicy(ObjectCategorical(noises, probs))
+    #px = DistributionPolicy(ObjectCategorical(noises, probs))
+    pa(s) = ObjectCategorical(noises, probs)
+    px = StateDependentDistributionPolicy(pa, noises)
 
     # Define the grid for interpolation
     θmax = π/4

@@ -53,8 +53,9 @@ function solve_cvar_particle(mdp, pa, grid, 𝒮, s2pt)
 end
 
 function solve_cvar_fixed_particle(rmdp, pa, grid, 𝒮, s2pt, cost_points; mdp_type=:gen, ngen=1)
-    as = support(pa)
-    ps = pa.p
+    # as = support(pa)
+    # ps = pa.p
+    as = action_space(pa).vals
     N = length(cost_points)
     cost_grid = RectangleGrid(cost_points)
 
@@ -63,6 +64,9 @@ function solve_cvar_fixed_particle(rmdp, pa, grid, 𝒮, s2pt, cost_points; mdp_
 
     # Solve with backwards induction value iteration
     for (si, s) in enumerate(𝒮)
+        a_dist = pa.pa(s)
+        as = support(a_dist)
+        ps = a_dist.p
         # si % 1000 == 0 ? println(si) : nothing
         for (ai, a) in enumerate(as)
             if mdp_type == :gen
