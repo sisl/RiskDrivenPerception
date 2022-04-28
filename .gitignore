@@ -32,6 +32,7 @@ collision_avoidance/data_files/
 collision_avoidance/data_generation/test_data_gen.py
 collision_avoidance/test_inference.ipynb
 collision_avoidance/training/
+collision_avoidance/uniform_state_sampling.jl
 imgs/
 out.gif
 

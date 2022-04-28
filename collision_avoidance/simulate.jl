@@ -49,7 +49,6 @@ function step_aircraft(s, a=0.0)
     h, dh
 end
 
-
 function mdp_state(s0, s1, a_prev)
     h = s0.z - s1.z
     dh = s0.dh - s1.dh

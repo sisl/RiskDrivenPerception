@@ -1,5 +1,6 @@
 using POMDPs, POMDPGym, Crux, Flux, Distributions, Plots, BSON, GridInterpolations
 using DataFrames, LinearAlgebra
+using StatsBase
 include("../src/risk_solvers.jl")
 
 # Load the environment and policy
@@ -22,11 +23,11 @@ policy = OptimalDetectAndAvoidPolicy(env, hs, dhs, τs)
 heatmap(τs, hs, (τ, h) -> action(policy, [h, 0.0, 0.0, τ]), xlabel="τ (s)", ylabel="h (m)", title="CAS Policy")
 
 # Set up the cost function and risk mdp
-costfn(m, s, sp) = isterminal(m, sp) ? 200 - abs(s[1]) : 0.0
+costfn(m, s, sp) = isterminal(m, sp) ? 150 - abs(s[1]) : 0.0
 rmdp = RMDP(env, policy, costfn, false, 1.0, 40.0, :both)
 
 # Start with just detect noise
-p_detect(s) = sigmoid(-0.3232s[4] + 3.2294)
+p_detect(s) = sigmoid(-0.006518117 * abs(s[1]) - 0.10433467s[4] + 1.2849158)
 function get_detect_dist(s)
     pd = p_detect(s)
     noises = [[ϵ, 0.0, 0.0, 0.0, 0.0] for ϵ in [0, 1]]
@@ -49,10 +50,10 @@ N = 1000
 D = episodes!(Sampler(rmdp, px), Neps=N)
 samples = D[:r][1, D[:done][:]]
 
-p1 = histogram(samples, title="CAS Costs", bins=range(0, 200, 50), normalize=true, alpha=0.3, xlabel="cost", label="MC")
+p1 = histogram(samples, title="CAS Costs", bins=range(0, 150, 50), normalize=true, alpha=0.3, xlabel="cost", label="MC")
 
 # Set up cost points, state grid, and other necessary data
-cost_points = collect(range(0, 200, 50))
+cost_points = collect(range(0, 150, 50))
 s_grid = RectangleGrid(hs, dhs, env.actions, τs)
 𝒮 = [[h, dh, a_prev, τ] for h in hs, dh in dhs, a_prev in env.actions, τ in τs];
 s2pt(s) = s
@@ -71,12 +72,12 @@ p2 = histogram!(cost_points, weights=Uw[si], bins=range(0, 200, 50), normalize=t
 CVaR(s, ϵ, α) = CVaR(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α)
 
 # Plot one sample
-heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], 0), title="α = 0")
+heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], 0.0), title="α = 0")
 
 anim = @animate for α in range(-1.0, 1.0, length=51)
-    heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], α), title="CVaR (α = $α)", clims=(0, 200), xlabel="τ (s)", ylabel="h (m)")
+    heatmap(τs, hs, (x, y) -> CVaR([y, 0.0, 0.0, x], [0], α), title="CVaR (α = $α)", clims=(0, 150), xlabel="τ (s)", ylabel="h (m)")
 end
-Plots.gif(anim, "collision_avoidance/figures/daa_CVaR_v2.gif", fps=6)
+Plots.gif(anim, "collision_avoidance/figures/daa_CVaR_v3.gif", fps=6)
 
 # Most important states
 riskmin(x; α) = minimum([CVaR(x, [noise], α) for noise in noises_detect])
@@ -90,31 +91,58 @@ anim = @animate for α in range(-1.0, 1.0, length=51)
 end
 Plots.gif(anim, "collision_avoidance/figures/daa_risk_weights.gif", fps=6)
 
-# Marginal Risk Weights
-marginal_risk_weight(h, τ; α) = sum([risk_weight([h, dh, a_prev, τ], α=α) for dh in dhs for a_prev in env.actions]) / (length(dhs) * length(env.actions))
-heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=0.0), xlabel="τ (s)", ylabel="h (m)", title="Risk of Perception Errors")
+# # Marginal Risk Weights
+# marginal_risk_weight(h, τ; α) = sum([risk_weight([h, dh, a_prev, τ], α=α) for dh in dhs for a_prev in env.actions]) / (length(dhs) * length(env.actions))
+# heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=0.0), xlabel="τ (s)", ylabel="h (m)", title="Risk of Perception Errors")
 
-anim = @animate for α in range(-1.0, 1.0, length=21)
-    heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=α), xlabel="τ (s)", ylabel="h (m)", title="Risk of Perception Errors: α = $(α)", clims=(0, 15))
+# anim = @animate for α in range(-1.0, 1.0, length=21)
+#     heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=α), xlabel="τ (s)", ylabel="h (m)", title="Risk of Perception Errors: α = $(α)", clims=(0, 15))
+# end
+# Plots.gif(anim, "collision_avoidance/figures/daa_marginal_risk_weights.gif", fps=3)
+
+# Get nominal distribution of dh and a_prev for marginal risk weight
+env = DetectAndAvoidMDP(ddh_max=1.0, px=DiscreteNonParametric([-0.5, 0.0, 0.5], [0.1, 0.8, 0.1]),
+    actions=[-8.0, 0.0, 8.0])
+
+N = 10000
+D = episodes!(Sampler(rmdp, px), Neps=N)
+samples = D[:r][1, D[:done][:]]
+
+dh_samps = D[:s][2, :]
+a_prev_samps = D[:s][3, :]
+
+histogram(dh_samps)
+histogram(a_prev_samps)
+
+function get_counts(samps, bins)
+    counts = zeros(length(bins) - 1)
+    for i = 1:length(bins)-1
+        counts[i] = length(findall(bins[i] .≤ samps .< bins[i+1]))
+    end
+    return counts
 end
-Plots.gif(anim, "collision_avoidance/figures/daa_marginal_risk_weights.gif", fps=3)
+
+dh_counts = get_counts(dh_samps, collect(-10.5:1:10.5))
+wdh = dh_counts ./ sum(dh_counts)
+a_prev_counts = get_counts(a_prev_samps, collect(-12:8:12))
+wa_prev = a_prev_counts ./ sum(a_prev_counts)
 
 # Marginal CVaR (done right?)
 function marginal_CVaR(h, τ, dhs, a_prevs, ϵ, s_grid, ϵ_grid, Qw, cost_points; α)
     w = zeros(length(cost_points))
-    for dh in dhs
-        for a_prev in a_prevs
+    for (i, dh) in enumerate(dhs)
+        for (j, a_prev) in enumerate(a_prevs)
             s = [h, dh, a_prev, τ]
             sis, sws = interpolants(s_grid, s)
             ϵis, ϵws = interpolants(ϵ_grid, ϵ)
             for (si, sw) in zip(sis, sws)
                 for (ϵi, ϵw) in zip(ϵis, ϵws)
-                    w .+= sw * ϵw .* Qw[ϵi][si]
+                    w .+= wdh[i] * wa_prev[j] * sw * ϵw .* Qw[ϵi][si]
                 end
             end
         end
     end
-    w ./= (length(dhs) * length(a_prevs))
+    #w ./= (length(dhs) * length(a_prevs))
 
     if α == 0
         return w' * cost_points#, 0.0
@@ -134,7 +162,7 @@ heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=0.0), xlab
 anim = @animate for α in range(-1.0, 1.0, length=21)
     heatmap(0:0.5:40, -300:5:300, (x, y) -> marginal_risk_weight(y, x, α=α), xlabel="τ (s)", ylabel="h (m)", title="Risk of Perception Errors: α = $(α)", clims=(0, 15))
 end
-Plots.gif(anim, "collision_avoidance/figures/daa_marginal_cvar_risk_weights.gif", fps=3)
+Plots.gif(anim, "collision_avoidance/figures/daa_marginal_cvar_risk_weights_v2.gif", fps=3)
 
 # Sampling distribution for risk-driven data generation
 function get_intruder_position(e0, n0, u0, h0, z, hang, vang)
@@ -232,7 +260,7 @@ samples = rejection_sample_states(10000, baseline=0.01)
 
 hsamps = samples[:, :h]
 τsamps = samples[:, :τ]
-histogram2d(τsamps, hsamps, ylims=(-300, 300), bins=(0:1:40, -300:10:300), xlabel = "τ (s)", ylabel="h (m)", title="Density of Sampled States")
+histogram2d(τsamps, hsamps, ylims=(-300, 300), bins=(0:1:40, -300:10:300), xlabel="τ (s)", ylabel="h (m)", title="Density of Sampled States")
 
-hranges = sqrt.((samples[:, :e0] .- samples[:, :e1]).^2 .+ (samples[:, :n0] .- samples[:, :n1]).^2)
+hranges = sqrt.((samples[:, :e0] .- samples[:, :e1]) .^ 2 .+ (samples[:, :n0] .- samples[:, :n1]) .^ 2)
 histogram(hranges, xlabel="Horizontal Range (m)", title="Ranges of Sampled States")

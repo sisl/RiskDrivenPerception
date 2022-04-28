@@ -53,7 +53,7 @@ function sampler(; v0_dist=Uniform(45, 55),
     v1_dist=Uniform(45, 55),
     hmd_dist=Uniform(0, 200),
     vmd_disp=Uniform(-50, 50),
-    θcpa_dist=Uniform(150, 210),
+    θcpa_dist=Uniform(100, 260),
     tcpa=40,
     ttot=50)
 
