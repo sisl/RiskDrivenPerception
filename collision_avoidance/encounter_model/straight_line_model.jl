@@ -47,13 +47,11 @@ function get_intruder_state(enc::Encounter, index)
     (x=enc.x1[index], y=enc.y1[index], z=enc.z1[index], v=enc.v1[index], dh=enc.dh1[index], θ=enc.θ1[index])
 end
 
-
-
 function sampler(; v0_dist=Uniform(45, 55),
     v1_dist=Uniform(45, 55),
-    hmd_dist=Uniform(0, 200),
+    hmd_dist=Uniform(0, 100),
     vmd_disp=Uniform(-50, 50),
-    θcpa_dist=Uniform(100, 260),
+    θcpa_dist=Uniform(120, 240),
     tcpa=40,
     ttot=50)
 
@@ -125,6 +123,36 @@ function get_encounter_states(enc_des::EncounterDescription; dt = 1)::Encounter
     return Encounter(
         x0, y0, z0, v0, dh0, θ0, x1, y1, z1, v1, dh1, θ1, a
     )
+end
+
+function rotate_and_shift(enc::Encounter, θ, shift)
+    # θ: new ownship heading
+
+    p0 = vcat(enc.x0', enc.y0', enc.z0')
+    p1 = vcat(enc.x1', enc.y1', enc.z1')
+
+    # First rotate everything
+    rot_mat = [cosd(θ) -sind(θ) 0; sind(θ) cosd(θ) 0; 0 0 1]
+    p0r = rot_mat * p0
+    p1r = rot_mat * p1
+
+    # Next shift everything
+    p0rs = p0r .+ shift
+    p1rs = p1r .+ shift
+
+    θ0 = fill(θ, length(enc.θ0))
+    θ1 = enc.θ1 .+ θ
+
+    return Encounter(p0rs[1, :], p0rs[2, :], p0rs[3, :], enc.v0, enc.dh0, θ0, p1rs[1, :], p1rs[2, :], p1rs[3, :], enc.v1, enc.dh1, θ1, enc.a)
+end
+
+function rotate_and_shift_encs(encs::Vector{Encounter}; 
+                               e0_dist = Uniform(-5000.0, 5000.0),  # m
+                               n0_dist = Uniform(-5000.0, 5000.0),  # m
+                               u0_dist = Uniform(-500.0, 500.0),    # m
+                               h0_dist = Uniform(0.0, 360.0))       # deg
+    new_encs = [rotate_and_shift(enc, rand(h0_dist), [rand(e0_dist), rand(n0_dist), rand(u0_dist)]) for enc in encs]
+    return new_encs
 end
 
 function get_encounter_set(get_sample_feats, nencs)

@@ -1,5 +1,6 @@
 using POMDPs, POMDPGym, Crux, Flux, Distributions, GridInterpolations, Plots
 using PyCall
+using Random
 
 include("encounter_model/straight_line_model.jl")
 
@@ -13,9 +14,7 @@ const Px = DiscreteNonParametric([-0.5, 0.0, 0.5], [0.1, 0.8, 0.1])
 struct XPlaneControl
     util
     client
-    model
 end
-
 
 function XPlaneControl()
     if pyimport("sys")."path"[1] != "collision_avoidance/"
@@ -28,9 +27,7 @@ function XPlaneControl()
     xplane_client.pauseSim(true)
     xplane_client.sendDREF("sim/operation/override/override_joystick", 1)
 
-    model = xplane_ctrl.load_model("collision_avoidance/models/traffic_detector_v3.pt")
-
-    XPlaneControl(xplane_ctrl, xplane_client, model)
+    XPlaneControl(xplane_ctrl, xplane_client)
 end
 
 # xplane_ctrl.get_bounding_box(xplane_client, model, 0,0,0,0, 0,200,0,0)
@@ -73,7 +70,7 @@ function mdp_state(s0, s1, a_prev)
     [h, dh, a_prev, τ]
 end
 
-function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=nothing)
+function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=nothing, model=nothing)
     """
     Inputs:
     - enc (Encounter): encounter to simulate (see encounter model file for details)
@@ -103,7 +100,7 @@ function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=no
         # Optionally call python to set state and take screenshot
         if !isnothing(xplane_control)
             save_num = save ? t : -1
-            bb, xp, yp, w, h = xplane_control.util.get_bounding_box(xplane_control.client, xplane_control.model, s0.x, s0.y, s0.z, s0.θ, s1.x, s1.y, s1.z, s1.θ, save_num)
+            bb, xp, yp, w, h = xplane_control.util.get_bounding_box(xplane_control.client, model, s0.x, s0.y, s0.z, s0.θ, s1.x, s1.y, s1.z, s1.θ, save_num)
         else
             bb = true
         end
@@ -120,7 +117,10 @@ function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=no
     return Encounter(s0s, s1s, as)
 end
 
-simulate_encounters(encs, policy; kwargs...) = [simulate_encounter(enc, policy; kwargs...) for enc in encs]
+function simulate_encounters(encs, policy, sleep_time; kwargs...)
+    sleep(sleep_time)
+    return [simulate_encounter(enc, policy; kwargs...) for enc in encs]
+end
 
 function is_nmac(enc::Encounter)
     for i = 1:length(enc.x0)
@@ -141,11 +141,11 @@ function plot_enc(enc; kwargs...)
     pv = plot(enc.z0, marker_z=enc.a, line_z=enc.a, marker=true, clims=(-5, 5), label="own")
     plot!(enc.z1, marker=true, label="intruder"; kwargs...)
 
-    plot(ph, pv, layout=(1, 2), size=(1200, 400))
+    plot(ph, pv, layout=(2, 1), size=(600, 800))
 end
 
 # Create environment
-env = CollisionAvoidanceMDP(px=Px)
+env = CollisionAvoidanceMDP(px=Px, ddh_max=1.0, actions=[-8.0, 0.0, 8.0])
 hmax = 500
 hs_half = hmax .- (collect(range(0, stop=hmax^(1 / 0.5), length=21))) .^ 0.5
 hs = [-hs_half[1:end-1]; reverse(hs_half)]
@@ -156,18 +156,35 @@ dhs = range(-10, 10, length=21)
 policy = OptimalCollisionAvoidancePolicy(env, hs, dhs, τs)
 
 # Get 100 encounters
-encs = get_encounter_set(sampler, 1)
+Random.seed!(12)
+encs = get_encounter_set(sampler, 10)
 nmacs = sum([is_nmac(enc) for enc in encs])
 
-# i = 1
-# plot_enc(encs[i], title="theta: $(encs[i].θ1[1])")
+# # Test rotate and shifting
+# test_enc = encs[2]
+# plot_enc(test_enc)
+
+# rotated_test_enc = rotate_and_shift(test_enc, 10, [500.0, -1000.0, 30.0])
+# plot_enc(rotated_test_enc)
+# rotated_test_enc.θ0
+# rotated_test_enc.θ1
+
+# simulate_encounters([rotated_test_enc], policy, 2.0, save=false, xplane_control=xctrl)
+
+# Rotate and shift
+new_encs = rotate_and_shift_encs(encs)
+plot_enc(new_encs[2])
 
 # connect to xplane
 xctrl = XPlaneControl()
 
+# Load in the perception model
+model_baseline = xctrl.util.load_model("collision_avoidance/models/traffic_detector_v3.pt")
+model_risk_data = xctrl.util.load_model("collision_avoidance/models/traffic_detector_risk_data_v2.pt")
+
 # Simulate them
-sim_encs_gt = simulate_encounters(encs, policy, save=false)
-sim_encs_perception = simulate_encounters(encs, policy, save=true, xplane_control=xctrl)
+sim_encs_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
+@time sim_encs_perception = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=model_baseline);
 
 # Count the number of nmacs
 nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_encs_gt])
@@ -177,4 +194,4 @@ nmacs_perception = sum([is_nmac(sim_enc) for sim_enc in sim_encs_perception])
 alerts_gt = sum([sum(enc.a .!= 0.0) for enc in sim_encs_gt])
 alerts_perception = sum([sum(enc.a .!= 0.0) for enc in sim_encs_perception])
 
-plot_enc(sim_encs_perception[5])
+plot_enc(sim_encs_perception[1])
