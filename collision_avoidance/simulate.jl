@@ -157,22 +157,12 @@ policy = OptimalCollisionAvoidancePolicy(env, hs, dhs, τs)
 
 # Get 100 encounters
 Random.seed!(12)
-encs = get_encounter_set(sampler, 10)
+encs = get_encounter_set(sampler, 1000)
 nmacs = sum([is_nmac(enc) for enc in encs])
-
-# # Test rotate and shifting
-# test_enc = encs[2]
-# plot_enc(test_enc)
-
-# rotated_test_enc = rotate_and_shift(test_enc, 10, [500.0, -1000.0, 30.0])
-# plot_enc(rotated_test_enc)
-# rotated_test_enc.θ0
-# rotated_test_enc.θ1
-
-# simulate_encounters([rotated_test_enc], policy, 2.0, save=false, xplane_control=xctrl)
 
 # Rotate and shift
 new_encs = rotate_and_shift_encs(encs)
+nmacs = sum([is_nmac(enc) for enc in new_encs])
 plot_enc(new_encs[2])
 
 # connect to xplane
@@ -184,14 +174,22 @@ model_risk_data = xctrl.util.load_model("collision_avoidance/models/traffic_dete
 
 # Simulate them
 sim_encs_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
-@time sim_encs_perception = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=model_baseline);
+@time sim_encs_baseline = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=model_baseline);
+@time sim_encs_risk_data = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=model_risk_data);
 
 # Count the number of nmacs
 nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_encs_gt])
-nmacs_perception = sum([is_nmac(sim_enc) for sim_enc in sim_encs_perception])
+nmacs_baseline = sum([is_nmac(sim_enc) for sim_enc in sim_encs_baseline])
+nmacs_risk_data = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data])
 
 # Count the number of alerts
 alerts_gt = sum([sum(enc.a .!= 0.0) for enc in sim_encs_gt])
-alerts_perception = sum([sum(enc.a .!= 0.0) for enc in sim_encs_perception])
+alerts_baseline = sum([sum(enc.a .!= 0.0) for enc in sim_encs_baseline])
+alerts_risk_data = sum([sum(enc.a .!= 0.0) for enc in sim_encs_risk_data])
 
-plot_enc(sim_encs_perception[1])
+alert_rate_gt = alerts_gt / 41000
+alert_rate_baseline = alerts_baseline / 41000
+alert_rate_risk_data = alerts_risk_data / 41000
+
+
+plot_enc(sim_encs_baseline[1])
