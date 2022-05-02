@@ -34,7 +34,7 @@ collision_avoidance/test_inference.ipynb
 collision_avoidance/training/
 collision_avoidance/uniform_state_sampling.jl
 imgs/
-out.gif
+out*.gif
 
 *.ipynb_checkpoints*
 *pycache*

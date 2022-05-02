@@ -27,7 +27,8 @@ costfn(m, s, sp) = isterminal(m, sp) ? 150 - abs(s[1]) : 0.0
 rmdp = RMDP(env, policy, costfn, false, 1.0, 40.0, :both)
 
 # Start with just detect noise
-p_detect(s) = sigmoid(-0.006518117 * abs(s[1]) - 0.10433467s[4] + 1.2849158)
+detect_model = BSON.load("collision_avoidance/models/nominal_error_model.bson")[:m]
+p_detect(s) = detect_model([abs(s[1]), s[4]])[1] # sigmoid(-0.006518117 * abs(s[1]) - 0.10433467s[4] + 1.2849158)
 function get_detect_dist(s)
     pd = p_detect(s)
     noises = [[ϵ, 0.0, 0.0, 0.0, 0.0] for ϵ in [0, 1]]
@@ -50,7 +51,7 @@ N = 1000
 D = episodes!(Sampler(rmdp, px), Neps=N)
 samples = D[:r][1, D[:done][:]]
 
-p1 = histogram(samples, title="CAS Costs", bins=range(0, 150, 50), normalize=true, alpha=0.3, xlabel="cost", label="MC")
+p1 = histogram(samples, title="CAS Costs", bins=range(0, 150, 20), normalize=true, alpha=0.3, xlabel="cost", label="MC")
 
 # Set up cost points, state grid, and other necessary data
 cost_points = collect(range(0, 150, 50))
@@ -66,7 +67,7 @@ s2pt(s) = s
 si, wi = GridInterpolations.interpolants(s_grid, s2pt(s0))
 si = si[argmax(wi)]
 
-p2 = histogram!(cost_points, weights=Uw[si], bins=range(0, 200, 50), normalize=true, alpha=0.4, label="DP")
+p2 = histogram!(cost_points, weights=Uw[si], bins=range(0, 150, 20), normalize=true, alpha=0.4, label="DP")
 
 # Create CVaR convenience functions
 CVaR(s, ϵ, α) = CVaR(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α)
@@ -263,4 +264,4 @@ hsamps = samples[:, :h]
 histogram2d(τsamps, hsamps, ylims=(-300, 300), bins=(0:1:40, -300:10:300), xlabel="τ (s)", ylabel="h (m)", title="Density of Sampled States")
 
 hranges = sqrt.((samples[:, :e0] .- samples[:, :e1]) .^ 2 .+ (samples[:, :n0] .- samples[:, :n1]) .^ 2)
-histogram(hranges, xlabel="Horizontal Range (m)", title="Ranges of Sampled States")
+histogram(hranges, xlabel="Horizontal Range (m)", title="Ranges of Sampled States", legend=false)

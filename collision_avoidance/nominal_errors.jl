@@ -11,20 +11,22 @@ using Flux: update!, DataLoader
 const HNMAC = 100
 
 # Imports for calling model
-if pyimport("sys")."path"[1] != "collision_avoidance/"
-    pushfirst!(pyimport("sys")."path", "collision_avoidance/")
-end
-xplane_ctrl = pyimport("util")
-model = xplane_ctrl.load_model("collision_avoidance/models/traffic_detector_v3.pt")
+# if pyimport("sys")."path"[1] != "collision_avoidance/"
+#     pushfirst!(pyimport("sys")."path", "collision_avoidance/")
+# end
+# xplane_ctrl = pyimport("util")
+# model = xplane_ctrl.load_model("collision_avoidance/models/traffic_detector_v3.pt")
 
-# Get the detections for all of the images
-detects = zeros(10000)
-for i = ProgressBar(0:9999)
-    filename = "collision_avoidance/data_files/state_uniform_data/imgs/$(i).jpg"
-    detects[i+1], _, _, _, _ = xplane_ctrl.bb_from_file(model, filename)
-end
+# # Get the detections for all of the images
+# detects = zeros(10000)
+# for i = ProgressBar(0:9999)
+#     filename = "collision_avoidance/data_files/state_uniform_data/imgs/$(i).jpg"
+#     detects[i+1], _, _, _, _ = xplane_ctrl.bb_from_file(model, filename)
+# end
 
-@save "collision_avoidance/data_files/detections_uniform_v3.bson" detects
+# @save "collision_avoidance/data_files/detections_uniform_v3.bson" detects
+
+detects = BSON.load("collision_avoidance/data_files/detections_uniform_v3.bson")[:detects]
 
 # Load in the state data
 data_file = "collision_avoidance/data_files/state_uniform_data/state_data.csv"
@@ -92,7 +94,7 @@ batch_size = 512
 nepoch = 250
 lr = 1e-3
 data = DataLoader((X, y), batchsize=batch_size, shuffle=true, partial=false)
-m = Dense(2, 1, sigmoid)
+m = Chain(Dense(2, 10, relu), Dense(10, 1, sigmoid))
 θ = Flux.params(m)
 opt = ADAM(lr)
 
@@ -107,5 +109,7 @@ end
 
 heatmap(0:0.1:40, -300:10:300, (x, y) -> m([abs(y), x])[1], xlabel='τ', ylabel='h')
 Flux.params(m)
+
+@save "collision_avoidance/models/nominal_error_model.bson" m
 
 plot(0:0.1:40, (x)->sigmoid(-0.3232x + 3.2294), xlabel="τ", ylabel="probability of detection", legend=false)

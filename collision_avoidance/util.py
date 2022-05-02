@@ -33,6 +33,16 @@ def get_bounding_box(client, model, e0, n0, u0, psi0, e1, n1, u1, psi1, save):
     return get_bb(model, get_screenshot(), save)
     
 
+def get_bounding_box_and_ss(client, model, e0, n0, u0, psi0, e1, n1, u1, psi1, save):
+    client.sendDREF("sim/time/zulu_time_sec", 9.0*3600 + 8*3600)
+    set_position(client, 0, e0, n0, u0, -psi0, 0, 0)
+    set_position(client, 1, e1, n1, u1, -psi1, 0, 0)
+    # time.sleep(0.1)
+    ss = get_screenshot()
+    bb, xp, yp, w, h = get_bb(model, ss, save)
+    return bb, xp, yp, w, h, ss
+
+
 def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
     ref = [37.46358871459961, -122.11750030517578, 1578.909423828125]
     p = pm.enu2geodetic(e, n, u, ref[0], ref[1], ref[2])
