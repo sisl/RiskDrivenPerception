@@ -230,7 +230,7 @@ npoints = 10
 
 time.sleep(3)
 
-state_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_driven_sample_states.csv"
+state_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_driven_sample_states_v2.csv"
 
 #gen_data_uniform(client, npoints, outdir)
 

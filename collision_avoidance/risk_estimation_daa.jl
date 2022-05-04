@@ -105,6 +105,8 @@ Plots.gif(anim, "collision_avoidance/figures/daa_risk_weights.gif", fps=6)
 env = DetectAndAvoidMDP(ddh_max=1.0, px=DiscreteNonParametric([-0.5, 0.0, 0.5], [0.1, 0.8, 0.1]),
     actions=[-8.0, 0.0, 8.0])
 
+rmdp = RMDP(env, policy, costfn, false, 1.0, 40.0, :both)
+
 N = 10000
 D = episodes!(Sampler(rmdp, px), Neps=N)
 samples = D[:r][1, D[:done][:]]
