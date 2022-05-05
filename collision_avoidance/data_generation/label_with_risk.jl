@@ -131,31 +131,17 @@ function mdp_state(e0, n0, e1, n1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 
     [h, dh, a_prev, τ]
 end
 
-fn = "collision_avoidance/data_files/test_yolo_data_rl/train/labels/0.txt"
-test = ""
-
-io = open(fn, "r")
-test = read(io, String)
-close(io)
-
-open(fn, "r") do io
-    test = read(io, String)
-    new_string = "$(test[1:end-1]) $(12) $(4)"
-    write(io, new_string)
-end
-
 # Loop through files
 for i = 1:26
     # Get the mdp state
     s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "e1"], df[i, "n1"])
-    println(s)
     # Get the detect risk
     detect_risk = round(CVaR(s, [1], 0.0), digits=6)
     # Get the no detect risk
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "collision_avoidance/data_files/test_yolo_data_rl/train/labels/$(fn).txt"
+    text_file_name = "/home/smkatz/Documents/yolov5_risk/data/test_yolo_data_rl/valid/labels/$(fn).txt"
     # Write the risks to it
     io = open(text_file_name, "r")
     temp = read(io, String)
