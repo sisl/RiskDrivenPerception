@@ -1,16 +1,19 @@
-function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.2), ϵω=Normal(0, 0.5), Nt=20, Ncost=50, Nθ=20, Nω=20)
+function rmdp_pendulum_setup(env, policy; ϵθ=Normal(0, 0.2), ϵω=Normal(0, 0.5), Nt=20, Ncost=50, Nθ=20, Nω=20,
+                             ϵθ_range = 10 .^ collect(range(log10(0.2 * std(ϵθ)), stop=log10(2 * std(ϵθ)), length=5)),
+                             ϵω_range = 10 .^ collect(range(log10(0.2 * std(ϵω)), stop=log10(2 * std(ϵω)), length=10))
+                             )
     # Create RMDP
     tmax = Nt * env.dt
     costfn(m, s, sp) = isterminal(m, sp) ? abs(s[2]) : 0
     rmdp = RMDP(env, policy, costfn, true, env.dt, tmax, :noise)
 
     # Set the nominal distribution of noise
-    noises_1_half = 10 .^ (collect(range(log10(0.2 * std(ϵθ)), stop=log10(2 * std(ϵθ)), length=Nϵθ)))
+    noises_1_half = ϵθ_range
     noises_1 = [reverse(-noises_1_half); 0.0; noises_1_half]
     # probs_1 = [pdf(ϵθ, n) for n in noises_1]
     # probs_1 ./= sum(probs_1)
 
-    noises_2_half = 10 .^ (collect(range(log10(0.2 * std(ϵω)), stop=log10(2 * std(ϵω)), length=Nϵω)))
+    noises_2_half = ϵω_range
     noises_2 = [reverse(-noises_2_half); 0.0; noises_2_half]
     # noises_2 = collect(range(-3, stop=3, length=Nϵω * 2)) # For uniform 
     # probs_2 = [pdf(ϵω, n) for n in noises_2]
@@ -23,7 +26,7 @@ function rmdp_pendulum_setup(env, policy; Nϵθ=5, Nϵω=10, ϵθ=Normal(0, 0.2)
     # probs = [p1 * p2 for p1 in probs_1 for p2 in probs_2]
     #px = DistributionPolicy(ObjectCategorical(noises, probs))
     pa(s) = ObjectCategorical(noises, probs)
-    px = StateDependentDistributionPolicy(pa, noises)
+    px = StateDependentDistributionPolicy(pa, DiscreteSpace(noises))
 
     # Define the grid for interpolation
     θmax = π/4

@@ -149,6 +149,8 @@ function CVaR(s, ϵ, s_grid, ϵ_grid, Qw, cost_points; α)
             w .+= sw * ϵw .* Qw[ϵi][si]
         end
     end
+    
+    global global_weights = w
 
     if α == 0
         return w' * cost_points#, 0.0
