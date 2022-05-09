@@ -90,7 +90,7 @@ end
 dh_dist, a_prev_dist = get_latent_dists(px, policy)
 
 # Start labeling the data
-state_data_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/traffic_data/state_data.csv"
+state_data_file = "/scratch/smkatz/yolo_data/uniform_data_v3/state_data.csv"
 df = DataFrame(CSV.File(state_data_file))
 
 dhs = range(-10, 10, length=21)
@@ -98,8 +98,8 @@ a_prevs = [-8.0, 0.0, 8.0]
 
 const HNMAC = 100
 
-function mdp_state(e0, n0, e1, n1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 240))
-    h = n0 - n1
+function mdp_state(e0, n0, u0, e1, n1, u1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 240))
+    h = u0 - u1
 
     v0 = rand(v_dist)
     v1 = rand(v_dist)
@@ -132,16 +132,89 @@ function mdp_state(e0, n0, e1, n1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 
 end
 
 # Loop through files
-for i = 1:26
+for i = 1:9500
     # Get the mdp state
-    s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "e1"], df[i, "n1"])
+    s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "u0"], df[i, "e1"], df[i, "n1"], df[i, "u1"])
     # Get the detect risk
     detect_risk = round(CVaR(s, [1], 0.0), digits=6)
     # Get the no detect risk
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/home/smkatz/Documents/yolov5_risk/data/test_yolo_data_rl/valid/labels/$(fn).txt"
+    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
+    # Write the risks to it
+    io = open(text_file_name, "r")
+    temp = read(io, String)
+    close(io)
+
+    new_string = "$(temp[1:end-1]) $(detect_risk) $(no_detect_risk)"
+
+    io = open(text_file_name, "w")
+    write(io, new_string)
+    close(io)
+end
+
+# Loop through files
+for i = 9501:10000
+    # Get the mdp state
+    s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "u0"], df[i, "e1"], df[i, "n1"], df[i, "u1"])
+    # Get the detect risk
+    detect_risk = round(CVaR(s, [1], 0.0), digits=6)
+    # Get the no detect risk
+    no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
+    # Get name of text file
+    fn = df[i, "filename"]
+    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/valid/labels/$(fn).txt"
+    # Write the risks to it
+    io = open(text_file_name, "r")
+    temp = read(io, String)
+    close(io)
+
+    new_string = "$(temp[1:end-1]) $(detect_risk) $(no_detect_risk)"
+
+    io = open(text_file_name, "w")
+    write(io, new_string)
+    close(io)
+end
+
+"""
+Overwrite Existing
+"""
+
+# Loop through files
+for i = 1:9500
+    # Get the mdp state
+    s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "u0"], df[i, "e1"], df[i, "n1"], df[i, "u1"])
+    # Get the detect risk
+    detect_risk = round(CVaR(s, [1], 0.0), digits=6)
+    # Get the no detect risk
+    no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
+    # Get name of text file
+    fn = df[i, "filename"]
+    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
+    # Write the risks to it
+    io = open(text_file_name, "r")
+    temp = read(io, String)
+    close(io)
+
+    new_string = "$(temp[1:end-1]) $(detect_risk) $(no_detect_risk)"
+
+    io = open(text_file_name, "w")
+    write(io, new_string)
+    close(io)
+end
+
+# Loop through files
+for i = 9501:10000
+    # Get the mdp state
+    s = mdp_state(df[i, "e0"], df[i, "n0"], df[i, "u0"], df[i, "e1"], df[i, "n1"], df[i, "u1"])
+    # Get the detect risk
+    detect_risk = round(CVaR(s, [1], 0.0), digits=6)
+    # Get the no detect risk
+    no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
+    # Get name of text file
+    fn = df[i, "filename"]
+    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/valid/labels/$(fn).txt"
     # Write the risks to it
     io = open(text_file_name, "r")
     temp = read(io, String)

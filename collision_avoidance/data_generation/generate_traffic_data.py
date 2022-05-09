@@ -218,21 +218,22 @@ def gen_data_from_states(client, state_file, outdir):
             fd.write("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n" %
                      (i, states['e0'][i], states['n0'][i], states['u0'][i], states['h0'][i], states['vang'][i], states['hang'][i], states['z'][i], states['e1'][i], states['n1'][i], states['u1'][i], states['h1'][i]))
 
+
 client = XPlaneConnect()
 client.pauseSim(True)
 client.sendDREF("sim/operation/override/override_joystick", 1)
 set_position(client, 1, 0, 1200, 10, 90, roll=0, pitch=0)
 set_position(client, 0, 0, 1200, 10, 90, roll=0, pitch=0)
 
-outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_driven_traffic_data/" # make sure this exists
+outdir = "/scratch/smkatz/yolo_data/risk_data_v3/" # make sure this exists
 
-npoints = 10
+#npoints = 10000
 
 time.sleep(3)
 
-state_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_driven_sample_states_v2.csv"
+state_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_data_states_v3.csv"
 
 #gen_data_uniform(client, npoints, outdir)
-
 gen_data_from_states(client, state_file, outdir)
-# gen_data(client, npoints, outdir)
+#np.random.seed(3)
+#gen_data(client, npoints, outdir)

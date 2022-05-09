@@ -33,6 +33,8 @@ collision_avoidance/data_generation/test_data_gen.py
 collision_avoidance/test_inference.ipynb
 collision_avoidance/training/
 collision_avoidance/uniform_state_sampling.jl
+collision_avoidance/simulate_pred.jl
+collision_avoidance/viz_risk_labels.jl
 imgs/
 out*.gif
 

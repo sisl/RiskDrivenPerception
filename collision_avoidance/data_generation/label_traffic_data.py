@@ -82,5 +82,5 @@ def gen_labels_yolo(outdir):
         fd.write("aircraft")
 
 
-outdir = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_driven_traffic_data/"
+outdir = "/scratch/smkatz/yolo_data/risk_data_v3/"
 gen_labels_yolo(outdir)

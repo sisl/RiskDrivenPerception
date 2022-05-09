@@ -29,6 +29,7 @@ rmdp = RMDP(env, policy, costfn, false, 1.0, 40.0, :both)
 # Start with just detect noise
 detect_model = BSON.load("collision_avoidance/models/nominal_error_model.bson")[:m]
 p_detect(s) = detect_model([abs(s[1]), s[4]])[1] # sigmoid(-0.006518117 * abs(s[1]) - 0.10433467s[4] + 1.2849158)
+heatmap(τs, hs, (τ, h)->p_detect([h, 0, 0, τ]))
 function get_detect_dist(s)
     pd = p_detect(s)
     noises = [[ϵ, 0.0, 0.0, 0.0, 0.0] for ϵ in [0, 1]]
@@ -206,8 +207,8 @@ end
 
 const HNMAC = 100
 
-function mdp_state(e0, n0, e1, n1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 240))
-    h = n0 - n1
+function mdp_state(e0, n0, u0, e1, n1, u1; v_dist=Uniform(45, 55), θ_dist=Uniform(120, 240))
+    h = u0 - u1
 
     v0 = rand(v_dist)
     v1 = rand(v_dist)
@@ -246,7 +247,7 @@ function rejection_sample_states(N; baseline=0.2, α=0.0)
     ind = 1
     while ind ≤ N
         e0, n0, u0, h0, vang, hang, z, e1, n1, u1, h1 = sample_random_state()
-        h, τ = mdp_state(e0, n0, e1, n1)
+        h, τ = mdp_state(e0, n0, u0, e1, n1, u1)
         rw = marginal_risk_weight(h, τ, α=α) / 15
         if rand() < rw + baseline
             # Store the sample
@@ -263,7 +264,9 @@ samples = rejection_sample_states(10000, baseline=0.01)
 
 hsamps = samples[:, :h]
 τsamps = samples[:, :τ]
-histogram2d(τsamps, hsamps, ylims=(-300, 300), bins=(0:1:40, -300:10:300), xlabel="τ (s)", ylabel="h (m)", title="Density of Sampled States")
+histogram2d(τsamps, hsamps, bins=(0:1:40, -300:10:300), xlabel="τ (s)", ylabel="h (m)", title="Density of Sampled States")
+histogram(τsamps)
+
 
 hranges = sqrt.((samples[:, :e0] .- samples[:, :e1]) .^ 2 .+ (samples[:, :n0] .- samples[:, :n1]) .^ 2)
 histogram(hranges, xlabel="Horizontal Range (m)", title="Ranges of Sampled States", legend=false)
