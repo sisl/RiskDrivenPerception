@@ -73,7 +73,32 @@ function mdp_state(s0, s1, a_prev)
     [h, dh, a_prev, τ]
 end
 
-function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=nothing, model=nothing, seed=1)
+function bb_center(s0, s1; hfov=80.0, vfov=49.5, sw=1920, sh=1056)
+    # Make ownship be the origin
+    x = s1.y - s0.y
+    y = -(s1.x - s0.x)  # right-handed coordinates
+    z = s1.z - s0.z
+
+    # Rotate x and y according to ownship heading
+    xrot = x * cosd(-s0.θ) - y * sind(-s0.θ)
+    yrot = -(x * sind(-s0.θ) + y * cosd(-s0.θ))
+
+    # https://www.youtube.com/watch?v=LhQ85bPCAJ8
+    xp = yrot / (xrot * tand(hfov / 2))
+    yp = z / (xrot * tand(vfov / 2))
+
+    # Get xp and yp between 0 and 1
+    xp = (xp + 1) / 2
+    yp = (yp + 1) / 2
+
+    # Map to pixel location
+    xp = xp * sw
+    yp = (1 - yp) * sh
+
+    return xp, yp
+end
+
+function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=nothing, model=nothing, seed=1, bb_error_tol=Inf)
     """
     Inputs:
     - enc (Encounter): encounter to simulate (see encounter model file for details)
@@ -105,7 +130,21 @@ function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=no
         # Optionally call python to set state and take screenshot
         if !isnothing(xplane_control)
             save_num = save ? t : -1
-            bb, xp, yp, w, h = xplane_control.util.get_bounding_box(xplane_control.client, model, s0.x, s0.y, s0.z, s0.θ, s1.x, s1.y, s1.z, s1.θ, save_num)
+            bb, boxes = xplane_control.util.get_bounding_box(xplane_control.client, model, s0.x, s0.y, s0.z, s0.θ, s1.x, s1.y, s1.z, s1.θ, save_num)
+            if bb
+                xp_gt, yp_gt = bb_center(s0, s1)
+                min_error = Inf
+                for i = 1:size(boxes, 1)
+                    xp, yp, _, _ = boxes[i, :]
+                    e = norm([xp, yp] - [xp_gt, yp_gt])
+                    if e < min_error
+                        min_error = e
+                    end
+                end
+                if min_error > bb_error_tol
+                    bb = false
+                end
+            end
         else
             bb = true
         end
@@ -121,6 +160,8 @@ function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=no
     save ? xplane_control.util.create_gif(N) : nothing
     return Encounter(s0s, s1s, as)
 end
+
+# sim_uniform_v1_test = simulate_encounters([new_encs[1]], policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
 
 function simulate_encounter_for_info(enc::Encounter, policy; sleep_time=0, save=true, xplane_control=nothing, model=nothing, seed=1)
     """
@@ -247,54 +288,70 @@ nmacs = sum([is_nmac(enc) for enc in new_encs])
 # connect to xplane
 xctrl = XPlaneControl()
 
-# Load in the perception model
-baseline_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_data_v1.pt")
-baseline_v2 = xctrl.util.load_model("collision_avoidance/models/uniform_data_v2.pt")
-risk_data_v1 = xctrl.util.load_model("collision_avoidance/models/risk_data_v1.pt")
-risk_data_v2 = xctrl.util.load_model("collision_avoidance/models/risk_data_v2.pt")
-risk_loss_1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/uniform_1.pt")
-risk_loss_risk_data_1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/risk_1.pt")
-risk_loss_0p1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/uniform_0p1.pt")
-risk_loss_risk_data_0p1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/risk_0p1.pt")
+# 5/11 run
+uniform_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_v1.pt")
+risk_v1 = xctrl.util.load_model("collision_avoidance/models/risk_v1.pt")
+risk_v2_rl = xctrl.util.load_model("collision_avoidance/models/risk_v2_rl.pt")
 
-# Simulate them
-sim_encs_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
-@time sim_encs_baseline_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=baseline_v1);
-@time sim_encs_baseline_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=baseline_v2);
-@time sim_encs_risk_data_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_data_v1);
-@time sim_encs_risk_data_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_data_v2);
-@time sim_encs_risk_loss_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_1);
-@time sim_encs_risk_loss_risk_data_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_risk_data_1);
+sim_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
+@time sim_uniform_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
+@time sim_risk_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v1, bb_error_tol=100.0);
+@time sim_risk_v2_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v2_rl, bb_error_tol=100.0);
 
-#@save "collision_avoidance/data_files/baseline_v_risk_encs_corrections.bson" sim_encs_gt sim_encs_baseline sim_encs_risk_data
+nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_gt])
+nmacs_uniform_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v1])
+nmacs_risk_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v1])
+nmacs_risk_v2_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v2_rl])
+nmacs
 
-# Count the number of nmacs
-nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_encs_gt])
-nmacs_baseline_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_baseline_v1])
-nmacs_baseline_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_baseline_v2])
-nmacs_risk_data_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data_v1])
-nmacs_risk_data_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data_v2])
-nmacs_risk_loss_1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_1])
-nmacs_risk_loss_risk_data_1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_risk_data_1])
-nmacs_risk_loss_0p1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_0p1])
-nmacs_risk_loss_risk_data_0p1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_risk_data_0p1])
+# # Load in the perception model
+# baseline_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_data_v1.pt")
+# baseline_v2 = xctrl.util.load_model("collision_avoidance/models/uniform_data_v2.pt")
+# risk_data_v1 = xctrl.util.load_model("collision_avoidance/models/risk_data_v1.pt")
+# risk_data_v2 = xctrl.util.load_model("collision_avoidance/models/risk_data_v2.pt")
+# risk_loss_1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/uniform_1.pt")
+# risk_loss_risk_data_1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/risk_1.pt")
+# risk_loss_0p1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/uniform_0p1.pt")
+# risk_loss_risk_data_0p1 = xctrl.util.load_model("collision_avoidance/models/risk_loss_100/risk_0p1.pt")
 
-# function run_me()
-#     sim_encs_risk_loss_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_0p1)
-#     sim_encs_risk_loss_risk_data_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_risk_data_0p1)
-#     return sim_encs_risk_loss_1, sim_encs_risk_loss_risk_data_1
-# end
+# # Simulate them
+# sim_encs_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
+# @time sim_encs_baseline_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=baseline_v1);
+# @time sim_encs_baseline_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=baseline_v2);
+# @time sim_encs_risk_data_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_data_v1);
+# @time sim_encs_risk_data_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_data_v2);
+# @time sim_encs_risk_loss_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_1);
+# @time sim_encs_risk_loss_risk_data_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_risk_data_1);
 
-# run_me()
+# #@save "collision_avoidance/data_files/baseline_v_risk_encs_corrections.bson" sim_encs_gt sim_encs_baseline sim_encs_risk_data
 
-# Count the number of alerts
-alerts_gt = sum([sum(enc.a .!= 0.0) for enc in sim_encs_gt])
-alerts_baseline = sum([sum(enc.a .!= 0.0) for enc in sim_encs_baseline])
-alerts_risk_data = sum([sum(enc.a .!= 0.0) for enc in sim_encs_risk_data])
+# # Count the number of nmacs
+# nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_encs_gt])
+# nmacs_baseline_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_baseline_v1])
+# nmacs_baseline_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_baseline_v2])
+# nmacs_risk_data_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data_v1])
+# nmacs_risk_data_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data_v2])
+# nmacs_risk_loss_1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_1])
+# nmacs_risk_loss_risk_data_1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_risk_data_1])
+# nmacs_risk_loss_0p1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_0p1])
+# nmacs_risk_loss_risk_data_0p1 = sum([is_nmac(sim_enc) for sim_enc in sim_encs_risk_loss_risk_data_0p1])
 
-alert_rate_gt = alerts_gt / 41000
-alert_rate_baseline = alerts_baseline / 41000
-alert_rate_risk_data = alerts_risk_data / 41000
+# # function run_me()
+# #     sim_encs_risk_loss_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_0p1)
+# #     sim_encs_risk_loss_risk_data_1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_loss_risk_data_0p1)
+# #     return sim_encs_risk_loss_1, sim_encs_risk_loss_risk_data_1
+# # end
+
+# # run_me()
+
+# # Count the number of alerts
+# alerts_gt = sum([sum(enc.a .!= 0.0) for enc in sim_encs_gt])
+# alerts_baseline = sum([sum(enc.a .!= 0.0) for enc in sim_encs_baseline])
+# alerts_risk_data = sum([sum(enc.a .!= 0.0) for enc in sim_encs_risk_data])
+
+# alert_rate_gt = alerts_gt / 41000
+# alert_rate_baseline = alerts_baseline / 41000
+# alert_rate_risk_data = alerts_risk_data / 41000
 
 # nmac_inds_baseline = findall([is_nmac(sim_enc) for sim_enc in sim_encs_baseline])
 # nmac_inds_risk_data = findall([is_nmac(sim_enc) for sim_enc in sim_encs_risk_data])
@@ -306,12 +363,12 @@ alert_rate_risk_data = alerts_risk_data / 41000
 
 # plot_enc_diffs(sim_encs_baseline[16], sim_encs_risk_data[16])
 
-function run_it()
-    sleep(1)
-    simulate_encounter(encs[13], policy; save=true, xplane_control=xctrl, model=model_baseline, seed=13)
-end
+# function run_it()
+#     sleep(1)
+#     simulate_encounter(encs[13], policy; save=true, xplane_control=xctrl, model=model_baseline, seed=13)
+# end
 
-run_it()
+# run_it()
 
 # # Analyze risk
 # include("../src/risk_solvers.jl")

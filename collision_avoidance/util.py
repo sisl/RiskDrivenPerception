@@ -217,17 +217,20 @@ def save_img_w_bb(model, im, save):
 
 def get_bb(model, im, save):
 
+    bbs = []
     df = model(im).pandas().xyxy[0]
     if not df.empty:
-        xmin = np.rint(df['xmin'][0])
-        xmax = np.rint(df['xmax'][0])
-        ymin = np.rint(df['ymin'][0])
-        ymax = np.rint(df['ymax'][0])
+        for i in range(len(df)):
+            xmin = np.rint(df['xmin'][i])
+            xmax = np.rint(df['xmax'][i])
+            ymin = np.rint(df['ymin'][i])
+            ymax = np.rint(df['ymax'][i])
 
-        xp = xmin
-        yp = ymin
-        w = xmax - xmin
-        h = ymax - ymin
+            xp = xmin
+            yp = ymin
+            w = xmax - xmin
+            h = ymax - ymin
+            bbs.append([xp, yp, w, h])
     else:
         xp, yp, w, h = 0, 0, 0, 0
 
@@ -255,7 +258,7 @@ def get_bb(model, im, save):
         plt.savefig(filename, bbox_inches='tight', pad_inches=0)
         plt.close(f)
 
-    return not df.empty, xp, yp, w, h
+    return not df.empty, bbs
 
 
 def create_gif(nsteps, dir='imgs/', gifname='out.gif'):
