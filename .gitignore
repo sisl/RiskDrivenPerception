@@ -38,5 +38,9 @@ collision_avoidance/viz_risk_labels.jl
 imgs/
 out*.gif
 
+*tmp*
+inverted_pendulum/figures/*.pdf
+inverted_pendulum/figures/*.tex
+
 *.ipynb_checkpoints*
 *pycache*
