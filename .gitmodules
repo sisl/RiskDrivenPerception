@@ -1,3 +1,6 @@
 [submodule "collision_avoidance/yolov5"]
 	path = collision_avoidance/yolov5
 	url = https://github.com/ultralytics/yolov5
+[submodule "collision_avoidance/yolov5_risk"]
+	path = collision_avoidance/yolov5_risk
+	url = git@github.com:smkatz12/yolov5_risk.git
