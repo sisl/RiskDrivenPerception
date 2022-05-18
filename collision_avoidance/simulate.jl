@@ -161,6 +161,101 @@ function simulate_encounter(enc::Encounter, policy; save=true, xplane_control=no
     return Encounter(s0s, s1s, as)
 end
 
+function simulate_encounter_detailed(enc::Encounter, policy; save=true, xplane_control=nothing, model=nothing, seed=1, bb_error_tol=Inf)
+    """
+    Inputs:
+    - enc (Encounter): encounter to simulate (see encounter model file for details)
+    - policy (OptimalCollisionAvoidancePolicy): policy for ownship to use
+    Outputs:
+    - sim_enc (Encounter): encounter object with simulated trajectories
+    """
+    Random.seed!(seed)
+
+    s0s = []
+    s1s = []
+    N = length(enc.x0)
+    a_prev = 0
+    s0 = get_ownship_state(enc, 1)
+    s1 = get_intruder_state(enc, 1)
+    z0, dh0 = s0.z, s0.dh
+    z1, dh1 = s1.z, s1.dh
+    as = []
+
+    # Extra info
+    bbs = []
+    xps = []
+    yps = []
+    bbws = []
+    bbhs = []
+    sss = []
+
+    for t in 1:N
+        s0 = get_ownship_state(enc, t)
+        s0 = (x=s0.x, y=s0.y, z=z0, v=s0.v, dh=dh0, θ=s0.θ)
+        s1 = get_intruder_state(enc, t)
+        s1 = (x=s1.x, y=s1.y, z=z1, v=s1.v, dh=dh1, θ=s1.θ)
+
+        # Store the state
+        push!(s0s, s0)
+        push!(s1s, s1)
+
+        # Optionally call python to set state and take screenshot
+        if !isnothing(xplane_control)
+            save_num = save ? t : -1
+            sleep(0.1)
+            bb, boxes, ss = xplane_control.util.get_bounding_box_and_ss(xplane_control.client, model, s0.x, s0.y, s0.z, s0.θ, s1.x, s1.y, s1.z, s1.θ, save_num)
+            if bb
+                xp_gt, yp_gt = bb_center(s0, s1)
+                min_error = Inf
+                min_ind = 0
+                for i = 1:size(boxes, 1)
+                    xp, yp, _, _ = boxes[i, :]
+                    e = norm([xp, yp] - [xp_gt, yp_gt])
+                    if e < min_error
+                        min_error = e
+                        min_ind = i
+                    end
+                end
+                if min_error > bb_error_tol
+                    bb = false
+                    push!(xps, 0.0)
+                    push!(yps, 0.0)
+                    push!(bbws, 0.0)
+                    push!(bbhs, 0.0)
+                    push!(sss, ss)
+                else
+                    xp, yp, w, h = boxes[min_ind, :]
+                    push!(xps, xp)
+                    push!(yps, yp)
+                    push!(bbws, w)
+                    push!(bbhs, h)
+                    push!(sss, ss)
+                end
+            else
+                push!(xps, 0.0)
+                push!(yps, 0.0)
+                push!(bbws, 0.0)
+                push!(bbhs, 0.0)
+                push!(sss, ss)
+            end
+        else
+            bb = true
+        end
+
+        push!(bbs, bb)
+
+        # compute the next state
+        a = bb ? action(policy, mdp_state(s0, s1, a_prev)) : 0.0
+        a_prev = a
+        push!(as, a)
+
+        z0, dh0 = step_aircraft(s0, a)
+        z1, dh1 = step_aircraft(s1)
+    end
+    save ? xplane_control.util.create_gif(N) : nothing
+    return Encounter(s0s, s1s, as), bbs, xps, yps, bbws, bbhs, sss
+end
+
 # sim_uniform_v1_test = simulate_encounters([new_encs[1]], policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
 
 function simulate_encounter_for_info(enc::Encounter, policy; sleep_time=0, save=true, xplane_control=nothing, model=nothing, seed=1)
@@ -277,7 +372,7 @@ policy = OptimalCollisionAvoidancePolicy(env, hs, dhs, τs)
 
 # Get 100 encounters
 Random.seed!(13)
-encs = get_encounter_set(sampler, 100)
+encs = get_encounter_set(sampler, 1000)
 nmacs = sum([is_nmac(enc) for enc in encs])
 
 # Rotate and shift
@@ -285,24 +380,113 @@ new_encs = rotate_and_shift_encs(encs)
 nmacs = sum([is_nmac(enc) for enc in new_encs])
 #plot_enc(new_encs[2])
 
-# connect to xplane
-xctrl = XPlaneControl()
+# # connect to xplane
+# xctrl = XPlaneControl()
 
-# 5/11 run
-uniform_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_v1.pt")
-risk_v1 = xctrl.util.load_model("collision_avoidance/models/risk_v1.pt")
-risk_v2_rl = xctrl.util.load_model("collision_avoidance/models/risk_v2_rl.pt")
+# # Full run
+# uniform_v1 = xctrl.util.load_model("models/uniform_v1.pt")
+# uniform_v2 = xctrl.util.load_model("models/uniform_v2.pt")
+# uniform_v3 = xctrl.util.load_model("models/uniform_v3.pt")
+# risk_v1 = xctrl.util.load_model("models/risk_v1.pt")
+# risk_v2 = xctrl.util.load_model("models/risk_v2.pt")
+# risk_v3 = xctrl.util.load_model("models/risk_v3.pt")
+# uniform_v1_rl = xctrl.util.load_model("models/uniform_v1_rl.pt")
+# uniform_v2_rl = xctrl.util.load_model("models/uniform_v2_rl.pt")
+# uniform_v3_rl = xctrl.util.load_model("models/uniform_v3_rl.pt")
+# risk_v1_rl = xctrl.util.load_model("models/risk_v1_rl.pt")
+# risk_v2_rl = xctrl.util.load_model("models/risk_v2_rl.pt")
+# risk_v3_rl = xctrl.util.load_model("models/risk_v3_rl.pt")
 
-sim_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
-@time sim_uniform_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
-@time sim_risk_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v1, bb_error_tol=100.0);
-@time sim_risk_v2_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v2_rl, bb_error_tol=100.0);
+# # sim_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
+# # @time sim_uniform_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
+# # @time sim_uniform_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v2, bb_error_tol=100.0);
+# # @time sim_uniform_v3 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v3, bb_error_tol=100.0);
+# # @time sim_risk_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v1, bb_error_tol=100.0);
+# # @time sim_risk_v2 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v2, bb_error_tol=100.0);
+# # @time sim_risk_v3 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v3, bb_error_tol=100.0);
+# # @time sim_uniform_v1_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1_rl, bb_error_tol=100.0);
+# # @time sim_uniform_v2_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v2_rl, bb_error_tol=100.0);
+# # @time sim_uniform_v3_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v3_rl, bb_error_tol=100.0);
+# # @time sim_risk_v1_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v1_rl, bb_error_tol=100.0);
+# # @time sim_risk_v2_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v2_rl, bb_error_tol=100.0);
+# # @time sim_risk_v3_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v3_rl, bb_error_tol=100.0);
 
-nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_gt])
-nmacs_uniform_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v1])
-nmacs_risk_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v1])
-nmacs_risk_v2_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v2_rl])
-nmacs
+# # Load in the results
+# res = "data_file/uniform_res.bson"
+# sim_uniform_v1, sim_uniform_v2, sim_uniform_v3 = res[:sim_uniform_v1], res[:sim_uniform_v2], res[:sim_uniform_v3]
+# res = "data_file/risk_res.bson"
+# sim_risk_v1, sim_risk_v2, sim_risk_v3 = res[:sim_risk_v1], res[:sim_risk_v2], res[:sim_risk_v3]
+# res = "data_file/uniform_res.bson"
+# sim_uniform_v1, sim_uniform_v2, sim_uniform_v3 = res[:sim_uniform_v1], res[:sim_uniform_v2], res[:sim_uniform_v3]
+# res = "data_file/risk_res.bson"
+# sim_risk_v1, sim_risk_v2, sim_risk_v3 = res[:sim_risk_v1], res[:sim_risk_v2], res[:sim_risk_v3]
+
+# nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_gt])
+# nmacs_uniform_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v1])
+# nmacs_uniform_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v2])
+# nmacs_uniform_v3 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v3])
+# nmacs_risk_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v1])
+# nmacs_risk_v2 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v2])
+# nmacs_risk_v3 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v3])
+# nmacs_uniform_v1_rl = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v1_rl])
+# nmacs_uniform_v2_rl = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v2_rl])
+# nmacs_uniform_v3_rl = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v3_rl])
+# nmacs_risk_v1_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v1_rl])
+# nmacs_risk_v2_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v2_rl])
+# nmacs_risk_v3_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v3_rl])
+
+# # @save "data_files/ground_truth.bson" sim_gt
+# # @save "data_files/uniform_res.bson" sim_uniform_v1 sim_uniform_v2 sim_uniform_v3
+# # @save "data_files/risk_res.bson" sim_risk_v1 sim_risk_v2 sim_risk_v3
+# # @save "data_files/uniform_res_rl.bson" sim_uniform_v1_rl sim_uniform_v2_rl sim_uniform_v3_rl
+# # @save "data_files/risk_res_rl.bson" sim_risk_v1_rl sim_risk_v2_rl sim_risk_v3_rl
+
+# println("Perfect perception NMACs: ", nmacs_gt)
+# println("Uniform Data NMACs: ", [nmacs_uniform_v1, nmacs_uniform_v2, nmacs_uniform_v3])
+# println("Risk Data NMACs: ", [nmacs_risk_v1, nmacs_risk_v2, nmacs_risk_v3])
+# println("Uniform Data Risk Loss NMACs: ", [nmacs_uniform_v1_rl, nmacs_uniform_v2_rl, nmacs_uniform_v3_rl])
+# println("Risk Data Risk Loss NMACs: ", [nmacs_risk_v1_rl, nmacs_risk_v2_rl, nmacs_risk_v3_rl])
+
+# # Analysis
+# inds_uniform_v1 = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v1])
+# inds_uniform_v2 = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v2])
+# inds_uniform_v3 = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v3])
+# inds_risk_v1 = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v1])
+# inds_risk_v2 = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v2])
+# inds_risk_v3 = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v3])
+# inds_uniform_v1_rl = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v1_rl])
+# inds_uniform_v2_rl = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v2_rl])
+# inds_uniform_v3_rl = findall([is_nmac(sim_enc) for sim_enc in sim_uniform_v3_rl])
+# inds_risk_v1_rl = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v1_rl])
+# inds_risk_v2_rl = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v2_rl])
+# inds_risk_v3_rl = findall([is_nmac(sim_enc) for sim_enc in sim_risk_v3_rl])
+
+# uniform_inds = findall(in(findall(in(inds_uniform_v1), inds_uniform_v2)), inds_uniform_v3)
+# risk_inds = findall(in(findall(in(inds_risk_v1), inds_risk_v2)), inds_risk_v3)
+# uniform_inds_rl = findall(in(findall(in(inds_uniform_v1_rl), inds_uniform_v2_rl)), inds_uniform_v3_rl)
+# risk_inds_rl = findall(in(findall(in(inds_risk_v1_rl), inds_risk_v2_rl)), inds_risk_v3_rl)
+
+# unr = findall(!in(uniform_inds), risk_inds)
+# unrl = findall(!in(uniform_inds_rl), uniform_inds)
+# unrrl = findall(!in(risk_inds_rl), uniform_inds)
+
+# resolved_inds = findall(in(findall(in(unr), unrl)), unrrl)
+
+# # 5/11 run
+# uniform_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_v1.pt")
+# risk_v1 = xctrl.util.load_model("collision_avoidance/models/risk_v1.pt")
+# risk_v2_rl = xctrl.util.load_model("collision_avoidance/models/risk_v2_rl.pt")
+
+# sim_gt = simulate_encounters(new_encs, policy, 0.0, save=false);
+# @time sim_uniform_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=uniform_v1, bb_error_tol=100.0);
+# @time sim_risk_v1 = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v1, bb_error_tol=100.0);
+# @time sim_risk_v2_rl = simulate_encounters(new_encs, policy, 2.0, save=false, xplane_control=xctrl, model=risk_v2_rl, bb_error_tol=100.0);
+
+# nmacs_gt = sum([is_nmac(sim_enc) for sim_enc in sim_gt])
+# nmacs_uniform_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_uniform_v1])
+# nmacs_risk_v1 = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v1])
+# nmacs_risk_v2_rl = sum([is_nmac(sim_enc) for sim_enc in sim_risk_v2_rl])
+# nmacs
 
 # # Load in the perception model
 # baseline_v1 = xctrl.util.load_model("collision_avoidance/models/uniform_data_v1.pt")

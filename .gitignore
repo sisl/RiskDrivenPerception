@@ -35,12 +35,16 @@ collision_avoidance/training/
 collision_avoidance/uniform_state_sampling.jl
 collision_avoidance/simulate_pred.jl
 collision_avoidance/viz_risk_labels.jl
+collision_avoidance/figures/*.tex
+collision_avoidance/figures/*.pdf
+collision_avoidance/figures/*.png
 imgs/
 out*.gif
 
 *tmp*
 inverted_pendulum/figures/*.pdf
 inverted_pendulum/figures/*.tex
+inverted_pendulum/figures/pngs/
 
 *.ipynb_checkpoints*
 *pycache*

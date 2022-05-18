@@ -125,6 +125,78 @@ function eval_perception(model, name; Neps=100, obsfn=obsfn, max_steps=1000, tes
     return output
 end
 
+function eval_perception_return(model; Neps=100, obsfn=obsfn, max_steps=500)
+    # Construct the image environment and the control policy
+    img_env = InvertedPendulumMDP(λcost=0.0f0, θ0=Uniform(-0.1, 0.1), ω0=Uniform(-0.1, 0.1), failure_thresh=π/4)
+    simple_policy = FunPolicy(continuous_rule(0.0, 2.0, -1))
+    π_img = ContinuousNetwork(Chain((x) -> model(reshape(obsfn(x), 360, 1)), (x) -> [action(simple_policy, x)]), 1)
+
+    # Get the undiscounted return using the combined controller
+    r = undiscounted_return(Sampler(img_env, π_img, max_steps=max_steps), Neps=Neps)
+
+    return r
+end
+
+################################################
+# Trials
+################################################
+function run_trials(ntrials; max_steps=500, Neps=50, Nepochs=400, λ=1f0, α=0)
+    baseline_returns = zeros(ntrials)
+    risk_returns = zeros(ntrials)
+
+    risk_function = BSON.load("inverted_pendulum/risk_networks/$noise_model/rn_$(α).bson")[:model] |> gpu
+    datas = [gen_data(10000) for i = 1:5]
+
+    for (i, data) in enumerate(datas)
+        println("Trial: ", i)
+    
+        # Train
+        baseline_model = train_perception(risk_loss(risk_function, λrisk=λ), "baseline", epochs=Nepochs, data=data, write2disk=false)
+        risk_model = train_perception(risk_loss(risk_function, λrisk=λ), "risk", epochs=Nepochs, data=data, write2disk=false)
+    
+        # Eval
+        println("evaluating baseline model...")
+        baseline_returns[i] = eval_perception_return(baseline_model, Neps=Neps, max_steps=max_steps)
+        println("evaluating risk model...")
+        risk_returns[i] = eval_perception_return(risk_model, Neps=Neps, max_steps=max_steps)
+    end
+    return baseline_returns, risk_returns
+end
+
+function run_α_trials(ntrials, αs; max_steps=500, Neps=50, Nepochs=400, λ=1.0f0, α=0)
+    nα = length(αs)
+    baseline_returns = zeros(ntrials)
+    risk_returns = zeros(nα, ntrials)
+
+    datas = [gen_data(10000) for i = 1:ntrials]
+
+    # Baseline
+    for (i, data) in enumerate(datas)
+        # Train
+        baseline_model = train_perception(mse_loss, "baseline", epochs=Nepochs, data=data, write2disk=false)
+        # Eval
+        println("evaluating baseline model...")
+        baseline_returns[i] = eval_perception_return(baseline_model, Neps=Neps, max_steps=max_steps)
+    end
+
+    for i = 1:nα
+        println("α: ", αs[i])
+        risk_function = BSON.load("inverted_pendulum/risk_networks/nominal_noise_assumption/rn_$(αs[i]).bson")[:model] |> gpu
+        for (j, data) in enumerate(datas)
+            println("Trial: ", j)
+
+            # Train
+            risk_model = train_perception(risk_loss(risk_function, λrisk=λ), "risk", epochs=Nepochs, data=data, write2disk=false)
+
+            # Eval
+            println("evaluating risk model...")
+            risk_returns[i, j] = eval_perception_return(risk_model, Neps=Neps, max_steps=max_steps)
+        end
+    end
+    return baseline_returns, risk_returns
+end
+
+baseline_returns, risk_returns = run_α_trials(5, [0.0, 0.2, 0.5, 0.8, 0.99], Neps=100)
 
 datas = [gen_data(10000) for i=1:5]
 max_steps = 500

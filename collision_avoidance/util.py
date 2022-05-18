@@ -39,8 +39,8 @@ def get_bounding_box_and_ss(client, model, e0, n0, u0, psi0, e1, n1, u1, psi1, s
     set_position(client, 1, e1, n1, u1, -psi1, 0, 0)
     # time.sleep(0.1)
     ss = get_screenshot()
-    bb, xp, yp, w, h = get_bb(model, ss, save)
-    return bb, xp, yp, w, h, ss
+    bb, boxes = get_bb(model, ss, save)
+    return bb, boxes, ss
 
 
 def set_position(client, ac, e, n, u, psi, pitch=-998, roll=-998):
