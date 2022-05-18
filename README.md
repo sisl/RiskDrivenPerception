@@ -1,4 +1,4 @@
-# Risk Sensitive Perception
+# Risk-Driven Design of Perception Systems
 
 ## Dependencies
 To run this code you will need to add the following unregistered julia packages
