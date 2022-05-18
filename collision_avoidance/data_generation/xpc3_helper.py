@@ -1,6 +1,6 @@
 # Helper functions for xpc3 specific to the taxinet problem
 # Written by Kyle Julian and Sydney Katz
-# Maintained by Sydney Katz (smkatz@stanford.edu)
+# Maintained by Sydney Katz (ANON@stanford.edu)
 
 import numpy as np
 import xpc3

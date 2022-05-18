@@ -90,7 +90,7 @@ end
 dh_dist, a_prev_dist = get_latent_dists(px, policy)
 
 # Start labeling the data
-state_data_file = "/scratch/smkatz/yolo_data/val_data/state_data.csv"
+state_data_file = "/scratch/ANON/yolo_data/val_data/state_data.csv"
 df = DataFrame(CSV.File(state_data_file))
 
 dhs = range(-10, 10, length=21)
@@ -141,7 +141,7 @@ for i = 1:1000
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/val_rl/valid/labels/$(fn).txt"
+    text_file_name = "/scratch/ANON/yolo_data/yolo_format/val_rl/valid/labels/$(fn).txt"
     # Write the risks to it
     io = open(text_file_name, "r")
     temp = read(io, String)
@@ -164,7 +164,7 @@ for i = 1:9500
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
+    text_file_name = "/scratch/ANON/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
     # Write the risks to it
     io = open(text_file_name, "r")
     temp = read(io, String)
@@ -187,7 +187,7 @@ for i = 9501:10000
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v1_rl/valid/labels/$(fn).txt"
+    text_file_name = "/scratch/ANON/yolo_data/yolo_format/uniform_v1_rl/valid/labels/$(fn).txt"
     # Write the risks to it
     io = open(text_file_name, "r")
     temp = read(io, String)
@@ -206,7 +206,7 @@ Overwrite Existing
 
 using DelimitedFiles
 
-text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v1_rl/train/labels/0.txt"
+text_file_name = "/scratch/ANON/yolo_data/yolo_format/uniform_v1_rl/train/labels/0.txt"
 io = open(text_file_name, "r")
 temp = read(io, String)
 close(io)
@@ -224,7 +224,7 @@ for i = 1:9500
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
+    text_file_name = "/scratch/ANON/yolo_data/yolo_format/uniform_v3_rl/train/labels/$(fn).txt"
     # Write the risks to it
     labels = readdlm(text_file_name)
     new_string = "$(labels[1]) $(labels[2]) $(labels[3]) $(labels[4]) $(labels[5]) $(detect_risk) $(no_detect_risk)"
@@ -244,7 +244,7 @@ for i = 9501:10000
     no_detect_risk = round(CVaR(s, [0], 0.0), digits=6)
     # Get name of text file
     fn = df[i, "filename"]
-    text_file_name = "/scratch/smkatz/yolo_data/yolo_format/uniform_v1_rl/valid/labels/$(fn).txt"
+    text_file_name = "/scratch/ANON/yolo_data/yolo_format/uniform_v1_rl/valid/labels/$(fn).txt"
     # Write the risks to it
     labels = readdlm(text_file_name)
     new_string = "$(labels[1]) $(labels[2]) $(labels[3]) $(labels[4]) $(labels[5]) $(detect_risk) $(no_detect_risk)"

@@ -20,8 +20,8 @@ struct XPlaneControl
 end
 
 function XPlaneControl()
-    if pyimport("sys")."path"[1] != "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/"
-        pushfirst!(pyimport("sys")."path", "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/")
+    if pyimport("sys")."path"[1] != "/home/ANON/Documents/RiskSensitivePerception/collision_avoidance/"
+        pushfirst!(pyimport("sys")."path", "/home/ANON/Documents/RiskSensitivePerception/collision_avoidance/")
     end
     xplane_ctrl = pyimport("util")
     xplane_ctrl = pyimport("importlib")["reload"](xplane_ctrl)

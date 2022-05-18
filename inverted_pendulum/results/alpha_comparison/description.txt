@@ -1,4 +1,0 @@
-In this set of experiments we were looking at how the choice of alpha effected for performance for a variety of noise models
-Each experiment was run for two different lambdas, about 9 alphas and repeated 5 times
-We recorded the returns, average actions, average angles, etc
-The results showed that for the nominal model, increased alpha lead to increased safety, up to a point

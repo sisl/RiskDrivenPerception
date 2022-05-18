@@ -225,13 +225,13 @@ client.sendDREF("sim/operation/override/override_joystick", 1)
 set_position(client, 1, 0, 1200, 10, 90, roll=0, pitch=0)
 set_position(client, 0, 0, 1200, 10, 90, roll=0, pitch=0)
 
-outdir = "/scratch/smkatz/yolo_data/val_data/" # make sure this exists
+outdir = "/scratch/ANON/yolo_data/val_data/" # make sure this exists
 
 npoints = 1000
 
 time.sleep(3)
 
-#state_file = "/home/smkatz/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_data_states_v3.csv"
+#state_file = "/home/ANON/Documents/RiskSensitivePerception/collision_avoidance/data_files/risk_data_states_v3.csv"
 
 #gen_data_uniform(client, npoints, outdir)
 #gen_data_from_states(client, state_file, outdir)

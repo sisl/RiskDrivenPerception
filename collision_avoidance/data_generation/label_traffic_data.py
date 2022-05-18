@@ -82,5 +82,5 @@ def gen_labels_yolo(outdir):
         fd.write("aircraft")
 
 
-outdir = "/scratch/smkatz/yolo_data/val_data/"
+outdir = "/scratch/ANON/yolo_data/val_data/"
 gen_labels_yolo(outdir)

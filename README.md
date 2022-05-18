@@ -1,9 +1,4 @@
-# Risk Sensitive Perception
-
-## Dependencies
-To run this code you will need to add the following unregistered julia packages
-* https://github.com/ancorso/POMDPGym.jl
-* https://github.com/ancorso/Crux.jl
+# Risk-Driven Design of Perception Systems
 
 ## Common Code
 * `src/risk_solvers.jl`: Implementation of the risk solvers for the abstracted perception MDP
