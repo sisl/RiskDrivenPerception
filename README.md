@@ -1,4 +1,5 @@
 # Risk-Driven Design of Perception Systems
+![](https://github.com/smkatz12/CS230_DAA/blob/main/collision_avoidance/figures/inference_test_above_v2.gif)
 
 ## Dependencies
 To run this code you will need to add the following unregistered julia packages
